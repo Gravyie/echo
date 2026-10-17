@@ -135,18 +135,13 @@ Without Docker for the API: `docker run -p 6379:6379 falkordb/falkordb` then `cd
 
 ## Deploy (free, no card)
 
-- **API + FalkorDB** on a free Hugging Face Docker Space. `backend/Dockerfile` runs both in one container (uid 1000, port 7860).
+- **API + FalkorDB** on Render's free tier. `backend/Dockerfile` runs FalkorDB and the API in one container (about 300 MB of RAM, under the 512 MB limit), and `render.yaml` describes the service. Open `https://render.com/deploy?repo=<this repo's URL>`, paste `GROQ_API_KEY` and apply. To use FalkorDB Cloud instead of the embedded database, set `FALKORDB_URL`.
+- **Web** on Vercel: root `web/`, with `NEXT_PUBLIC_API_URL=https://<service>.onrender.com`.
   ```bash
-  uvx --from huggingface_hub hf auth login          # write token from huggingface.co/settings/tokens
-  cd backend && uv run python ../scripts/deploy_space.py   # creates the Space, sets GROQ_API_KEY from .env, uploads
-  ```
-  To use FalkorDB Cloud instead of the embedded database, set `FALKORDB_URL` as a Space secret.
-- **Web** on Vercel: root `web/`, with `NEXT_PUBLIC_API_URL=https://<user>-echo-memory.hf.space`.
-  ```bash
-  cd web && npx vercel deploy --prod --build-env NEXT_PUBLIC_API_URL=https://<user>-echo-memory.hf.space
+  cd web && npx vercel deploy --prod --build-env NEXT_PUBLIC_API_URL=https://<service>.onrender.com
   ```
 
-A free Space sleeps after two days without visits. The studio waits for it to wake (about a minute) instead of failing.
+A free Render service sleeps after 15 minutes without traffic. The studio waits for it to wake (about a minute) instead of failing.
 
 ## API
 

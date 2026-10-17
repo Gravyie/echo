@@ -1,0 +1,12 @@
+# One-click deploy of the Echo API (FalkorDB embedded) on Render's free tier.
+services:
+  - type: web
+    name: echo-memory
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
