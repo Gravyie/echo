@@ -1,0 +1,33 @@
+[project]
+name = "echo-memory"
+version = "0.1.0"
+description = "Echo: agent memory that counts independent origins, not mentions. Built on FalkorDB."
+readme = "README.md"
+authors = [
+    { name = "Gravyie", email = "garvashandilya@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "falkordb>=1.8.0",
+    "fastapi>=0.143.3",
+    "fastembed>=0.9.0",
+    "httpx>=0.28.1",
+    "mcp[cli]>=2.3.0",
+    "openai>=3.33.0",
+    "pydantic-settings>=2.16.0",
+    "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
+    "sse-starlette>=3.5.0",
+    "tldextract>=5.4.0",
+    "trafilatura>=2.3.1",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+echo-memory = "echo_memory.api:main"
+echo-mcp = "echo_memory.mcp_server:main"
+echo-eval = "echo_memory.evaluate:run"
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12.0"]
+build-backend = "uv_build"
