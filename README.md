@@ -4,6 +4,8 @@
 
 Echo is a memory layer for AI agents, built on [FalkorDB](https://falkordb.com). It links every belief an agent stores to where it came from, all the way back to its origin. Before the agent trusts a belief, Echo counts how many *independent origins* support it, not how many times it was seen.
 
+**Live:** [echo-memory-rho.vercel.app](https://echo-memory-rho.vercel.app) · **Studio:** [/studio](https://echo-memory-rho.vercel.app/studio) · **API + MCP:** [echo-memory.onrender.com](https://echo-memory.onrender.com/api/health) (free tier: the first request after a quiet spell takes about a minute while it wakes)
+
 Built for **Graph Hacks 2026** (WeMakeDevs × FalkorDB). Tracks: **02 Agent Memory and Coordination** (core) and **01 Agents That Act on Connected Data** (the agent's tools are graph queries and graph algorithms).
 
 ![Echo studio: the agent inspects a belief and the graph lights up its lineage](docs/inspector.png)
@@ -104,7 +106,7 @@ Scenarios: **The safest gateway** (a hospital picks an LLM gateway; one planted,
 The API serves an MCP server at `/mcp/` (streamable HTTP), or run it over stdio with `uv run echo-mcp`.
 
 ```json
-{ "mcpServers": { "echo": { "type": "http", "url": "https://<your-echo-api>/mcp/" } } }
+{ "mcpServers": { "echo": { "type": "http", "url": "https://echo-memory.onrender.com/mcp/" } } }
 ```
 
 Tools: `echo_recall`, `echo_check`, `echo_ingest`, `echo_remember`, `echo_retract`, `echo_load_bearing`, `echo_cypher`.

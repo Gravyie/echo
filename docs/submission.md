@@ -7,11 +7,11 @@
 **Tracks:** 02 Agent Memory and Coordination (primary), 01 Agents That Act on Connected Data
 
 **Links:**
-- Live demo: <VERCEL_URL>
-- API (FalkorDB + agent, MCP at `/mcp/`): <SPACE_URL>
-- Repository: <REPO_URL>
+- Live demo: https://echo-memory-rho.vercel.app
+- API (FalkorDB + agent, MCP at `/mcp/`): https://echo-memory.onrender.com
+- Repository: https://github.com/Gravyie/echo
 - Demo video: <VIDEO_URL>
-- Blog post: <BLOG_URL>
+- Blog post: <BLOG_URL> (draft in docs/blog.md)
 
 ## What it does
 

@@ -1,6 +1,6 @@
 # Five sources, one origin: teaching agent memory to count independence with FalkorDB
 
-*Built for Graph Hacks 2026 (WeMakeDevs × FalkorDB). Code: see the repository README. Live demo: see the submission.*
+*Built for Graph Hacks 2026 (WeMakeDevs × FalkorDB). Live demo: [echo-memory-rho.vercel.app](https://echo-memory-rho.vercel.app). Code: [github.com/Gravyie/echo](https://github.com/Gravyie/echo).*
 
 An agent researching LLM gateways for a hospital reads five pages that call one vendor "the safest choice for patient data". Five sources agree, so it stores the claim as well supported, and from then on it recommends that vendor in every session.
 
@@ -105,6 +105,6 @@ The last column matters. A reworded copy with no link, no shared figures and a d
 
 ## Try it
 
-The studio clones a private FalkorDB graph for you. Ask the agent the hospital question, watch both answers stream in, open the disputed belief, then retract the planted post and watch every belief built on it fall. Echo also runs as an MCP server, so you can point Claude Code or Cursor at `/mcp/` and give your own agent the same independence check.
+The studio clones a private FalkorDB graph for you. Ask the agent the hospital question, watch both answers stream in, open the disputed belief, then retract the planted post and watch every belief built on it fall. Echo also runs as an MCP server, so you can point Claude Code or Cursor at `https://echo-memory.onrender.com/mcp/` and give your own agent the same independence check.
 
 *Every company, person and site in the demo data is fictional.*

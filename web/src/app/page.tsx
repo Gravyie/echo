@@ -299,7 +299,7 @@ const MCP_CONFIG = `{
   "mcpServers": {
     "echo": {
       "type": "http",
-      "url": "https://<your-echo-api>/mcp/"
+      "url": "https://echo-memory.onrender.com/mcp/"
     }
   }
 }`;
