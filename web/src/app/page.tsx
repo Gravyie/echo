@@ -6,6 +6,7 @@ import { CypherBlock } from "@/components/CypherBlock";
 import { CollapseViz } from "@/components/landing/CollapseViz";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { ProductShot } from "@/components/landing/ProductShot";
+import { WakeApi } from "@/components/landing/WakeApi";
 import { Reveal } from "@/components/landing/Reveal";
 
 const E = evalData as unknown as {
@@ -368,6 +369,7 @@ function Closing() {
 export default function Home() {
   return (
     <>
+      <WakeApi />
       <Nav />
       <main className="flex-1">
         <Hero />
