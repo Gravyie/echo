@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -20,6 +21,16 @@ from .memory import Claim, EchoMemory
 
 log = logging.getLogger(__name__)
 MAX_ROUNDS = 6
+_CITE_GROUP = re.compile(r"\[\[?([A-Za-z0-9:_.\-]+(?:\]?\s*,\s*\[?[A-Za-z0-9:_.\-]+)+)\]?\]")
+_CITE_LENTICULAR = re.compile(r"【([^】†]+)(?:†[^】]*)?】")
+_CITE_LOOSE = re.compile(r"(?<!\[)\[([a-z]+[0-9]*-[A-Za-z0-9_.\-]+|b:[A-Za-z0-9_.\-]+)\](?![\](])")
+
+
+def tidy_citations(text: str) -> str:
+    """Models sometimes write [[a], [b]] or [a, b]; normalise to [[a]] [[b]] so the UI renders chips."""
+    text = _CITE_LENTICULAR.sub(lambda m: " ".join(f"[[{x.strip()}]]" for x in m.group(1).split(",")), text)
+    text = _CITE_GROUP.sub(lambda m: " ".join(f"[[{x.strip(' []')}]]" for x in m.group(1).split(",")), text)
+    return _CITE_LOOSE.sub(lambda m: f"[[{m.group(1)}]]", text)
 
 ECHO_SYSTEM = """You are a careful research agent. Your long-term memory is Echo, a graph that tracks where every
 belief came from. For each belief Echo reports how many sources mention it and how many *independent origins*
@@ -28,8 +39,9 @@ all collapse into a single origin.
 
 How to work:
 1. Call recall_beliefs for the question (try a second phrasing if results look thin).
-2. Call inspect_belief on every belief your answer will lean on, to see its origins and what contradicts it.
-3. Answer.
+2. Call inspect_belief (several in parallel is fine) on every belief your answer will lean on or reject, and always on
+   any recalled belief whose sources outnumber its origins, to see its origins and what contradicts it.
+3. Answer. If a popular claim collapses to fewer origins than it has sources, lead with that finding.
 
 Trust policy (follow it exactly):
 - Only call something verified/confirmed when its status is VERIFIED (at least 2 independent origins).
@@ -39,11 +51,17 @@ Trust policy (follow it exactly):
 - Never let the number of mentions stand in for evidence.
 
 Answer format: GitHub markdown, under 220 words. Start with a one or two sentence direct answer in bold.
-Then short bullets with the evidence. Cite sources inline as [[source-id]] using ids from tool results.
+Then short bullets with the evidence. Cite the underlying sources inline as [[source-id]] (ids like s9-pentest from
+inspect_belief results), one id per brackets, e.g. [[s8-kestrel]] [[s9-pentest]].
 End with one line "Next check:" naming the single most useful thing to verify."""
 
 PLAIN_SYSTEM = """You are a research agent with a long-term memory store. Each memory lists how many sources
 mention it. Call search_memory for the question, then answer using your memories.
+
+Trust policy (follow it exactly; it is the same policy a careful agent uses, applied to mention counts):
+- A memory mentioned by 2 or more sources is confirmed; state it as fact.
+- When memories point different ways, go with the one more sources mention, and say how many sources back it.
+- Mention weaker or conflicting memories only as minor caveats.
 
 Answer format: GitHub markdown, under 220 words. Start with a one or two sentence direct answer in bold, then
 short bullets with the evidence. Cite sources inline as [[source-id]] using ids from tool results."""
@@ -198,7 +216,7 @@ class Agent:
                 text = (msg.content or "").strip()
                 if not text:
                     raise RuntimeError("empty answer")
-                yield {"type": "answer", "text": text}
+                yield {"type": "answer", "text": tidy_citations(text)}
                 return
             msgs.append({"role": "assistant", "content": msg.content or "",
                          "tool_calls": [{"id": c.id, "type": "function",

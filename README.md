@@ -95,6 +95,10 @@ Scenarios: **The safest gateway** (a hospital picks an LLM gateway; one planted,
 | ![Agent run](docs/agent.png) | ![Retraction](docs/retract.png) |
 | ![Citation loop](docs/citation-loop.png) | ![Landing](docs/landing.png) |
 
+## Write-ups
+
+[Blog post](docs/blog.md) · [Demo script](docs/demo-script.md) · [Submission text](docs/submission.md)
+
 ## Use it from any agent (MCP)
 
 The API serves an MCP server at `/mcp/` (streamable HTTP), or run it over stdio with `uv run echo-mcp`.
@@ -112,7 +116,7 @@ flowchart LR
   UI[Next.js studio<br/>Vercel] -- REST + SSE --> API[FastAPI<br/>agent loop, lineage, scoring]
   MCP[Any MCP client] -- /mcp --> API
   API -- Cypher, algo.*, vector index --> F[(FalkorDB<br/>one graph per workspace)]
-  API -- tool calling --> LLM[Groq<br/>gpt-oss-120b]
+  API -- tool calling --> LLM[Groq<br/>gpt-oss-120b, fallback gpt-oss-20b]
   API -- local ONNX --> EMB[bge-small embeddings]
 ```
 
@@ -131,8 +135,18 @@ Without Docker for the API: `docker run -p 6379:6379 falkordb/falkordb` then `cd
 
 ## Deploy (free, no card)
 
-- **API + FalkorDB**: `backend/Dockerfile` runs both in one container (uid 1000, port 7860), so it fits a free Hugging Face Docker Space. Add `GROQ_API_KEY` as a secret. To use FalkorDB Cloud instead, set `FALKORDB_URL`.
-- **Web**: Vercel, root `web/`, env `NEXT_PUBLIC_API_URL=https://<space>.hf.space`.
+- **API + FalkorDB** on a free Hugging Face Docker Space. `backend/Dockerfile` runs both in one container (uid 1000, port 7860).
+  ```bash
+  uvx --from huggingface_hub hf auth login          # write token from huggingface.co/settings/tokens
+  cd backend && uv run python ../scripts/deploy_space.py   # creates the Space, sets GROQ_API_KEY from .env, uploads
+  ```
+  To use FalkorDB Cloud instead of the embedded database, set `FALKORDB_URL` as a Space secret.
+- **Web** on Vercel: root `web/`, with `NEXT_PUBLIC_API_URL=https://<user>-echo-memory.hf.space`.
+  ```bash
+  cd web && npx vercel deploy --prod --build-env NEXT_PUBLIC_API_URL=https://<user>-echo-memory.hf.space
+  ```
+
+A free Space sleeps after two days without visits. The studio waits for it to wake (about a minute) instead of failing.
 
 ## API
 

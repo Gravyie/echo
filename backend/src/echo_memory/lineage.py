@@ -140,6 +140,9 @@ def owner_keys(doc: SourceDoc) -> list[OwnerKey]:
     return keys
 
 
+MAX_LINK_STUBS = 24
+
+
 def links_in(doc: SourceDoc) -> list[str]:
     out, seen = [], set()
     for rx in _LINK_RES:
@@ -250,10 +253,16 @@ def detect(new: SourceDoc, corpus: list[SourceDoc], order: dict[str, int] | None
 
     # Explicit citations (resolved later against stubs when the target is unknown).
     own = normalize_url(new.url) if new.url else None
+    home, stubs = site_of(new.url), 0
     for link in links_in(new):
         if link == own or is_commercial(link):
             continue
         tgt = by_url.get(link)
+        if not tgt:
+            # Links to unknown pages on the same site are navigation (same owner anyway); cap the rest.
+            if (home and site_of(link) == home) or stubs >= MAX_LINK_STUBS:
+                continue
+            stubs += 1
         deps.append(Dependence("CITES", new.id, tgt.id if tgt else f"url:{link}", "hyperlink", 1.0, link))
     for d in corpus:  # existing docs that link to the new one
         if own and own in links_in(d) and d.id != new.id:

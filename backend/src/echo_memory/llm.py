@@ -38,6 +38,8 @@ def chat(messages: list[dict], tools: list[dict] | None = None, json_mode: bool 
             if tools:
                 kw["tools"] = tools
                 kw["tool_choice"] = "auto"
+            if "gpt-oss" in model:  # reasoning models: keep tool loops snappy
+                kw["extra_body"] = {"reasoning_effort": "low"}
             if json_mode:
                 kw["response_format"] = {"type": "json_object"}
             return client().chat.completions.create(**kw).choices[0].message

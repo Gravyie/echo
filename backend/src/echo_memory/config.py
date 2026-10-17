@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     llm_base_url: str = "https://api.groq.com/openai/v1"
     llm_model: str = "openai/gpt-oss-120b"
-    llm_fallback_model: str = "llama-3.3-70b-versatile"
+    llm_fallback_model: str = "openai/gpt-oss-20b"
 
     # Embeddings run locally (fastembed / ONNX). Falls back to hashed bag-of-words.
     embed_model: str = "BAAI/bge-small-en-v1.5"

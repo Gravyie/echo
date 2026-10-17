@@ -79,7 +79,7 @@ function StepRow({ s, onHighlight }: { s: Step; onHighlight: (s: Step) => void }
         </span>
         <div className="min-w-0 flex-1">
           <button className="flex w-full items-center gap-1.5 text-left" onClick={() => (s.highlight ? onHighlight(s) : undefined)}>
-            <span className="text-[12.5px] font-medium text-text">{TOOL_LABEL[s.tool] ?? s.tool}</span>
+            <span className="shrink-0 whitespace-nowrap text-[12.5px] font-medium text-text">{TOOL_LABEL[s.tool] ?? s.tool}</span>
             <span className="truncate font-mono text-[11px] text-faint">{arg}</span>
           </button>
           {s.summary && <div className="mt-0.5 text-[12px] leading-snug text-muted">{s.summary}</div>}

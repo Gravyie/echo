@@ -1,6 +1,7 @@
 "use client";
 
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from "react-force-graph-2d";
+import { forceCollide } from "d3-force";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GraphEdge, GraphNode, Status } from "@/lib/api";
 
@@ -12,6 +13,15 @@ export interface Highlight {
 
 type N = NodeObject & GraphNode & { isRoot?: boolean; dependents?: number };
 type L = LinkObject & GraphEdge & { key: string };
+
+/** A label queued during the node pass and drawn last, on top, with overlap culling. */
+interface Label {
+  x: number;
+  y: number;
+  lines: { text: string; font: string; color: string }[];
+  prio: number;
+  size: number;
+}
 
 const LINEAGE = new Set(["CITES", "COPIED_FROM", "DERIVED_FROM"]);
 const STATUS_VAR: Record<Status, string> = {
@@ -83,6 +93,7 @@ export function GraphView({
   const [pal, setPal] = useState<ReturnType<typeof readPalette> | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const positions = useRef(new Map<string, { x: number; y: number }>());
+  const labels = useRef<Label[]>([]);
   const fitted = useRef(false);
   useEffect(() => {
     fitted.current = false; // fit the whole graph once per workspace
@@ -122,7 +133,7 @@ export function GraphView({
       const p = positions.current.get(n.id);
       return {
         ...n,
-        isRoot: n.label === "Source" && !hasUp.has(n.id) && (downCount.get(n.id) ?? 0) > 0,
+        isRoot: n.label === "Source" && n.kind !== "agent" && !hasUp.has(n.id) && (downCount.get(n.id) ?? 0) > 0,
         dependents: downCount.get(n.id) ?? 0,
         ...(p ? { x: p.x, y: p.y } : {}),
       } as N;
@@ -140,8 +151,12 @@ export function GraphView({
     link
       ?.distance((l) => (LINEAGE.has(l.type) ? 62 : l.type === "PUBLISHED_BY" ? 26 : l.type === "ABOUT" ? 80 : 110))
       .strength((l) => (LINEAGE.has(l.type) ? 0.9 : l.type === "PUBLISHED_BY" ? 0.7 : 0.25));
-    const charge = f.d3Force("charge") as unknown as { strength: (n: number) => void } | undefined;
-    charge?.strength(-260);
+    const charge = f.d3Force("charge") as unknown as { strength: (fn: (n: N) => number) => void } | undefined;
+    charge?.strength((n: N) => (n.label === "Belief" ? -340 : n.label === "Entity" ? -180 : -200));
+    f.d3Force(
+      "collide",
+      forceCollide<N>((n) => (n.label === "Belief" ? 34 : n.label === "Entity" ? 30 : n.label === "Owner" ? 8 : 14)).strength(0.9) as never,
+    );
 
     f.d3ReheatSimulation();
   }, [data]);
@@ -173,18 +188,16 @@ export function GraphView({
         ctx.roundRect(x - r, y - r, r * 2, r * 2, 4);
         ctx.fill();
         ctx.stroke();
-        if (scale > 0.7 || on) {
+        if (on) {
           const fs = 11 / Math.max(scale, 0.9);
-          ctx.fillStyle = pal.text;
-          ctx.font = `500 ${fs}px ${pal.sans}`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          ctx.fillText(short(node.name, 32), x, y + r + 4);
-          if (node.echo) {
-            ctx.fillStyle = c;
-            ctx.font = `600 ${fs * 0.9}px ${pal.mono}`;
-            ctx.fillText(`${node.sources} sources → ${node.origins} origin${node.origins === 1 ? "" : "s"}`, x, y + r + 6 + fs);
-          }
+          const lines = [{ text: short(node.name, 30), font: `500 ${fs}px ${pal.sans}`, color: pal.text }];
+          if (node.echo)
+            lines.push({
+              text: `${node.sources} sources → ${node.origins} origin${node.origins === 1 ? "" : "s"}`,
+              font: `600 ${fs * 0.88}px ${pal.mono}`,
+              color: c,
+            });
+          labels.current.push({ x, y: y + r + 4, lines, size: fs, prio: isSel ? 100 : highlight?.nodes.has(node.id) ? 60 : node.echo ? 40 : 30 });
         }
       } else if (node.label === "Source") {
         const kind = node.kind ?? "web";
@@ -225,12 +238,15 @@ export function GraphView({
           ctx.stroke();
         }
         if (scale > 1.8 || isSel || node.id === hover || (highlight?.nodes.has(node.id) && highlight.nodes.size < 14) || node.isRoot) {
-          ctx.fillStyle = node.isRoot ? pal.accent : pal.muted;
-          ctx.font = `${10.5 / Math.max(scale, 0.9)}px ${pal.mono}`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          const label = node.url ? node.url.replace(/^https?:\/\//, "").split("/")[0] : node.name;
-          ctx.fillText(short(label, 30), x, y + r + 3);
+          const fs = 10.5 / Math.max(scale, 0.9);
+          const label = node.url ? node.url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] : node.name;
+          labels.current.push({
+            x,
+            y: y + r + 3,
+            size: fs,
+            prio: isSel || node.id === hover ? 90 : node.isRoot ? 50 : 20,
+            lines: [{ text: short(label, 28), font: `${fs}px ${pal.mono}`, color: node.isRoot ? pal.accent : pal.muted }],
+          });
         }
       } else if (node.label === "Owner") {
         const r = 2.6;
@@ -242,18 +258,16 @@ export function GraphView({
         ctx.lineTo(x - r, y);
         ctx.closePath();
         ctx.fill();
-        if (node.kind === "network" && scale > 0.8) {
-          ctx.fillStyle = pal.bad;
-          ctx.font = `${9 / Math.max(scale, 0.9)}px ${pal.mono}`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          ctx.fillText(short(node.name, 26), x, y + 4);
+        if (node.kind === "network" && (scale > 1.1 || node.id === hover || highlight?.nodes.has(node.id))) {
+          const fs = 9 / Math.max(scale, 0.9);
+          labels.current.push({ x, y: y + 4, size: fs, prio: node.id === hover ? 90 : 10, lines: [{ text: short(node.name, 24), font: `${fs}px ${pal.mono}`, color: pal.bad }] });
         }
       } else if (node.label === "Entity") {
-        ctx.fillStyle = pal.faint;
-        ctx.font = `600 ${10 / Math.max(scale, 0.9)}px ${pal.mono}`;
+        ctx.fillStyle = alpha(pal.faint, 0.75);
+        ctx.font = `600 ${9 / Math.max(scale, 0.9)}px ${pal.mono}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
+        ctx.letterSpacing = "1px";
         ctx.fillText(node.name.toUpperCase(), x, y);
       } else {
         ctx.fillStyle = pal.agent;
@@ -282,6 +296,40 @@ export function GraphView({
     [pal, highlight, lit],
   );
 
+  const drawLabels = useCallback(
+    (ctx: CanvasRenderingContext2D, scale: number) => {
+      if (!pal) return;
+      const placed: [number, number, number, number][] = [];
+      const pad = 3 / scale;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      for (const lb of labels.current.sort((a, b) => b.prio - a.prio)) {
+        const widths = lb.lines.map((l) => {
+          ctx.font = l.font;
+          return ctx.measureText(l.text).width;
+        });
+        const w = Math.max(...widths) + pad * 2;
+        const h = lb.lines.length * lb.size * 1.25 + pad;
+        const box: [number, number, number, number] = [lb.x - w / 2, lb.y - pad / 2, lb.x + w / 2, lb.y + h];
+        if (lb.prio < 90 && placed.some((p) => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1])) continue;
+        placed.push(box);
+        ctx.fillStyle = alpha(pal.bg, 0.82);
+        ctx.beginPath();
+        ctx.roundRect(box[0], box[1], w, h, 3 / scale);
+        ctx.fill();
+        lb.lines.forEach((l, i) => {
+          ctx.font = l.font;
+          ctx.fillStyle = l.color;
+          ctx.fillText(l.text, lb.x, lb.y + i * lb.size * 1.25);
+        });
+      }
+      ctx.restore();
+      labels.current = [];
+    },
+    [pal],
+  );
+
   const keyOf = (l: L) => {
     const s = typeof l.source === "object" ? (l.source as N).id : (l.source as string);
     const t = typeof l.target === "object" ? (l.target as N).id : (l.target as string);
@@ -292,17 +340,7 @@ export function GraphView({
   useEffect(() => {
     const f = fg.current;
     if (!f || !highlight || highlight.nodes.size === 0) return;
-    const t = window.setTimeout(() => {
-      const pts = [...highlight.nodes].map((id) => positions.current.get(id)).filter(Boolean) as { x: number; y: number }[];
-      if (!pts.length) return;
-      const xs = pts.map((p) => p.x);
-      const ys = pts.map((p) => p.y);
-      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-      const pad = 110;
-      const k = Math.min(3.2, Math.max(0.5, Math.min(size.w / (x1 - x0 + pad * 2), size.h / (y1 - y0 + pad * 2))));
-      f.centerAt((x0 + x1) / 2, (y0 + y1) / 2, 700);
-      f.zoom(k, 700);
-    }, 80);
+    const t = window.setTimeout(() => f.zoomToFit(700, 90, (n: N) => highlight.nodes.has(n.id)), 80);
     return () => window.clearTimeout(t);
   }, [highlight, size.w, size.h]);
 
@@ -317,6 +355,10 @@ export function GraphView({
           nodeId="id"
           backgroundColor="rgba(0,0,0,0)"
           nodeCanvasObject={drawNode}
+          onRenderFramePre={() => {
+            labels.current = [];
+          }}
+          onRenderFramePost={drawLabels}
           nodePointerAreaPaint={(node, color, ctx) => {
             if (node.x == null || node.y == null) return;
             ctx.fillStyle = color;
@@ -324,7 +366,7 @@ export function GraphView({
             ctx.arc(node.x, node.y, node.label === "Belief" ? 13 : 8, 0, Math.PI * 2);
             ctx.fill();
           }}
-          nodeLabel={(n) => `${n.label}: ${n.name}`}
+          nodeLabel={() => ""}
           linkColor={linkColor}
           linkWidth={(l) => (highlight?.edges.has(keyOf(l)) ? 2.4 : LINEAGE.has(l.type) ? 1.4 : 0.7)}
           linkLineDash={(l) => (l.type === "CITES" ? [4, 3] : l.type === "DERIVED_FROM" ? [1, 3] : null)}
@@ -346,6 +388,8 @@ export function GraphView({
             }
           }}
           enableNodeDrag
+          maxZoom={3.2}
+          minZoom={0.3}
         />
       )}
     </div>

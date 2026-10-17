@@ -12,15 +12,20 @@ export function Answer({ text, onCite, titles }: { text: string; onCite: (id: st
         return parts.map((p, i) => {
           const m = p.match(/^\[\[([^\]]+)\]\]$/);
           if (!m) return p;
-          const id = m[1];
+          // Models sometimes prefix a belief id wrongly (s:x for b:x); resolve to whatever node exists.
+          const raw = m[1].trim();
+          const bare = raw.replace(/^[a-z]+:/, "");
+          const id = [raw, `b:${bare}`, bare].find((k) => titles.has(k));
+          if (!id) return <span key={`${raw}-${i}`} className="font-mono text-[11px] text-faint">{bare}</span>;
           const t = titles.get(id);
+          const belief = id.startsWith("b:");
           const label = t ? (t.length > 26 ? t.slice(0, 25) + "…" : t) : id;
           return (
             <button
               key={`${id}-${i}`}
               onClick={() => onCite(id)}
               title={t ?? id}
-              className="mx-0.5 inline-flex max-w-[16rem] translate-y-[-1px] items-center truncate rounded-md border border-line-strong bg-surface-3 px-1.5 py-[1px] align-middle font-mono text-[10.5px] text-muted transition-colors hover:border-accent hover:text-accent"
+              className={`mx-0.5 inline-flex ${belief ? "rounded-[3px] border-dashed" : ""} max-w-[16rem] translate-y-[-1px] items-center truncate rounded-md border border-line-strong bg-surface-3 px-1.5 py-[1px] align-middle font-mono text-[10.5px] text-muted transition-colors hover:border-accent hover:text-accent`}
             >
               {label}
             </button>

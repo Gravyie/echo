@@ -5,6 +5,7 @@ import { REPO_URL, Wordmark } from "@/components/Brand";
 import { CypherBlock } from "@/components/CypherBlock";
 import { CollapseViz } from "@/components/landing/CollapseViz";
 import { HowItWorks } from "@/components/landing/HowItWorks";
+import { ProductShot } from "@/components/landing/ProductShot";
 import { Reveal } from "@/components/landing/Reveal";
 
 const E = evalData as unknown as {
@@ -80,7 +81,7 @@ function Hero() {
           </a>
         </div>
       </Reveal>
-      <div className="relative aspect-[5/4] w-full md:aspect-auto md:h-[520px]">
+      <div className="relative aspect-[15/13] w-full md:aspect-auto md:h-[540px]">
         <CollapseViz />
       </div>
     </section>
@@ -371,6 +372,20 @@ export default function Home() {
       <main className="flex-1">
         <Hero />
         <Problem />
+        <section id="studio" className="mx-auto max-w-[1280px] scroll-mt-20 px-5 pt-24 md:px-8 md:pt-32">
+          <Reveal>
+            <h2 className="max-w-[22ch] font-display text-4xl font-semibold tracking-tight md:text-5xl">
+              Ask once. See which sources were really one.
+            </h2>
+            <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-muted">
+              The same research agent answers twice, once on a plain memory and once on Echo. The plain one recommends the
+              planted vendor. Echo shows why it should not.
+            </p>
+          </Reveal>
+          <div className="mt-14">
+            <ProductShot />
+          </div>
+        </section>
         <section id="how" className="mx-auto max-w-[1280px] scroll-mt-20 px-5 py-24 md:px-8 md:py-28">
           <Reveal>
             <h2 className="max-w-[20ch] font-display text-4xl font-semibold tracking-tight md:text-5xl">

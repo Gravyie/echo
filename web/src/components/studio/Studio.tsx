@@ -52,6 +52,7 @@ export default function Studio() {
   const [rings, setRings] = useState<{ id: number; sources: string[]; titles: string[]; networks: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const [fatal, setFatal] = useState<string | null>(null);
+  const [waking, setWaking] = useState(false);
   const [health, setHealth] = useState<{ llm: boolean; llm_model: string | null } | null>(null);
 
   const [sel, setSel] = useState<Sel>(null);
@@ -98,6 +99,18 @@ export default function Studio() {
       const key = `echo.ws.${scenario}`;
       let w = storageGet(key);
       try {
+        // A free host may be asleep. Wait for it (up to ~2 minutes) before giving up.
+        for (let i = 0; ; i++) {
+          try {
+            setHealth(await api.health());
+            break;
+          } catch {
+            if (cancelled || i >= 40) throw new Error("unreachable");
+            setWaking(true);
+            await new Promise((r) => setTimeout(r, 3000));
+          }
+        }
+        setWaking(false);
         if (w) {
           try {
             await api.workspace(w);
@@ -370,7 +383,7 @@ export default function Studio() {
                 setCompare={setCompare}
                 onAsk={onAsk}
                 titles={titles}
-                onCite={(id) => setSel({ kind: "source", id })}
+                onCite={(id) => setSel(id.startsWith("b:") ? { kind: "belief", id } : { kind: "source", id })}
                 onHighlight={highlightStep}
               />
             )}
@@ -394,7 +407,9 @@ export default function Studio() {
             <div className="absolute inset-0 grid place-items-center">
               <div className="text-center">
                 <div className="skeleton mx-auto size-16 rounded-full" />
-                <div className="mt-4 font-mono text-[12px] text-faint">Cloning a private FalkorDB graph for you</div>
+                <div className="mt-4 font-mono text-[12px] text-faint">
+                  {waking ? "Waking the API. Free hosting sleeps when idle; this takes up to a minute." : "Cloning a private FalkorDB graph for you"}
+                </div>
               </div>
             </div>
           ) : (
@@ -487,27 +502,33 @@ function Legend({
   setShowAgent: (b: boolean) => void;
 }) {
   const item = (swatch: React.ReactNode, label: string) => (
-    <div className="flex items-center gap-2">
-      <span className="grid w-4 place-items-center">{swatch}</span>
+    <span className="flex items-center gap-1.5 whitespace-nowrap">
+      <span className="grid w-3.5 place-items-center">{swatch}</span>
       {label}
-    </div>
+    </span>
+  );
+  const toggle = (on: boolean, set: (b: boolean) => void, label: string) => (
+    <button
+      onClick={() => set(!on)}
+      aria-pressed={on}
+      className={`whitespace-nowrap rounded-full border px-2 py-0.5 transition-colors ${
+        on ? "border-accent/50 bg-accent-soft text-accent" : "border-line-strong text-faint hover:text-text"
+      }`}
+    >
+      {label}
+    </button>
   );
   return (
-    <div className="absolute bottom-4 left-4 hidden space-y-1.5 rounded-xl border border-line bg-surface/90 p-3 text-[11px] text-muted backdrop-blur md:block">
-      {item(<span className="size-2.5 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]" />, "Origin")}
-      {item(<span className="size-2.5 rounded-full border border-muted" />, "Source")}
-      {item(<span className="size-2.5 border border-agent" />, "Agent note")}
-      {item(<span className="size-3 rounded-[3px] border border-ok bg-ok/20" />, "Belief, colored by verdict")}
-      {item(<span className="h-px w-4 bg-accent" />, "Copied from / cites")}
-      <div className="mt-2 space-y-1 border-t border-line pt-2">
-        <label className="flex cursor-pointer items-center gap-2">
-          <input type="checkbox" checked={showOwners} onChange={(e) => setShowOwners(e.target.checked)} className="accent-[var(--accent)]" />
-          Domains and authors
-        </label>
-        <label className="flex cursor-pointer items-center gap-2">
-          <input type="checkbox" checked={showAgent} onChange={(e) => setShowAgent(e.target.checked)} className="accent-[var(--accent)]" />
-          Agent memory
-        </label>
+    <div className="pointer-events-none absolute inset-x-3 bottom-3 hidden md:flex">
+      <div className="pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-line bg-surface/85 px-3 py-2 text-[11px] text-muted backdrop-blur">
+        {item(<span className="size-2.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]" />, "Origin")}
+        {item(<span className="size-2.5 rounded-full border border-muted" />, "Source")}
+        {item(<span className="size-2.5 border border-agent" />, "Agent note")}
+        {item(<span className="size-2.5 rounded-[3px] border border-ok bg-ok/20" />, "Belief")}
+        {item(<span className="h-px w-3.5 bg-accent" />, "Copied / cites")}
+        <span className="h-3 w-px bg-line-strong" />
+        {toggle(showOwners, setShowOwners, "Owners")}
+        {toggle(showAgent, setShowAgent, "Agent memory")}
       </div>
     </div>
   );
