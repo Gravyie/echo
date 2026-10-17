@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     embed_model: str = "BAAI/bge-small-en-v1.5"
     embed_dim: int = 384
     disable_fastembed: bool = False
+    embed_cache: str | None = None
 
     # Scoring knobs.
     verify_min_origins: int = 2

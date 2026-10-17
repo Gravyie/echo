@@ -41,7 +41,7 @@ def _load():
             try:
                 from fastembed import TextEmbedding
 
-                _model = TextEmbedding(settings().embed_model)
+                _model = TextEmbedding(settings().embed_model, cache_dir=settings().embed_cache)
             except Exception as e:  # offline, no model cache, etc.
                 log.warning("fastembed unavailable (%s); using hashed embeddings", e)
                 _failed = True

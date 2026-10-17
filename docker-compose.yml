@@ -1,0 +1,20 @@
+# Local stack: FalkorDB (with its browser on :3000) + the Echo API on :8000.
+#   docker compose up --build        then open the web app (cd web && pnpm dev)
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    ports:
+      - "6379:6379"
+      - "3000:3000"
+  api:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      FALKORDB_URL: redis://falkordb:6379
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - falkordb

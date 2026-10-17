@@ -330,14 +330,25 @@ class EchoMemory:
 
     def recall(self, query: str, k: int = 6) -> list[dict[str, Any]]:
         vec = embed.embed_one(query)
-        rows = self.db.q(
+        with ws_lock(self.ws):  # don't read the vector index while a write is rescoring beliefs
+            rows = self._recall_rows(vec, k * 3)
+        # The index can return a node more than once; keep each belief's best hit.
+        seen: set[str] = set()
+        out = []
+        for r in rows:
+            if r["similarity"] is not None and r["id"] not in seen:
+                seen.add(r["id"])
+                out.append(r)
+        return out[:k]
+
+    def _recall_rows(self, vec: list[float], k: int) -> list[dict[str, Any]]:
+        return self.db.q(
             "CALL db.idx.vector.queryNodes('Belief','embedding',$k,vecf32($v)) YIELD node, score "
             "OPTIONAL MATCH (node)-[:ABOUT]->(e:Entity) "
             "RETURN node.id AS id, node.statement AS statement, e.name AS subject, 1 - score AS similarity, "
             + ", ".join(f"node.{f} AS {f}" for f in VERDICT_FIELDS) + " ORDER BY similarity DESC",
             {"k": k, "v": vec}, ro=True,
         )
-        return [r for r in rows if r["similarity"] is not None]
 
     def ledger(self) -> list[dict[str, Any]]:
         return self.db.q(

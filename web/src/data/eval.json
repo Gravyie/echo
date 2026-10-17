@@ -1,0 +1,659 @@
+{
+ "n": 30,
+ "seed": 7,
+ "seconds": 2.2,
+ "poisoned": 18,
+ "genuine": 12,
+ "plain": {
+  "false_claims_trusted": 0.944,
+  "true_claims_trusted": 1.0
+ },
+ "echo": {
+  "false_claims_trusted": 0.056,
+  "true_claims_trusted": 1.0
+ },
+ "origin_count_exact": 0.733,
+ "avg_mentions_per_poisoned_claim": 4.78,
+ "detection_by_method": {
+  "verbatim": {
+   "detected": 17,
+   "total": 17,
+   "recall": 1.0
+  },
+  "link": {
+   "detected": 23,
+   "total": 23,
+   "recall": 1.0
+  },
+  "specifics": {
+   "detected": 10,
+   "total": 10,
+   "recall": 1.0
+  },
+  "network": {
+   "detected": 8,
+   "total": 8,
+   "recall": 1.0
+  },
+  "chain": {
+   "detected": 2,
+   "total": 4,
+   "recall": 0.5
+  },
+  "hidden": {
+   "detected": 2,
+   "total": 10,
+   "recall": 0.2
+  }
+ },
+ "cases": [
+  {
+   "case": 0,
+   "poisoned": true,
+   "mentions": 5,
+   "sources": 3,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "REPORTED",
+   "plain_trusts": false,
+   "echo_trusts": false,
+   "methods": [
+    "verbatim",
+    "link"
+   ],
+   "detected": {
+    "verbatim:True": 1,
+    "link:True": 1
+   }
+  },
+  {
+   "case": 1,
+   "poisoned": true,
+   "mentions": 4,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "SINGLE_ORIGIN",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "specifics",
+    "chain",
+    "link"
+   ],
+   "detected": {
+    "specifics:True": 1,
+    "chain:True": 1,
+    "link:True": 1
+   }
+  },
+  {
+   "case": 2,
+   "poisoned": true,
+   "mentions": 6,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "verbatim",
+    "specifics",
+    "link"
+   ],
+   "detected": {
+    "verbatim:True": 1,
+    "specifics:True": 1,
+    "link:True": 1
+   }
+  },
+  {
+   "case": 3,
+   "poisoned": true,
+   "mentions": 7,
+   "sources": 6,
+   "true_origins": 1,
+   "echo_origins": 2,
+   "echo_status": "CONTESTED",
+   "plain_status": "CONFIRMED by 6 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "specifics",
+    "chain",
+    "verbatim",
+    "hidden",
+    "hidden"
+   ],
+   "detected": {
+    "specifics:True": 1,
+    "chain:True": 1,
+    "verbatim:True": 1,
+    "hidden:False": 1,
+    "hidden:True": 1
+   }
+  },
+  {
+   "case": 4,
+   "poisoned": true,
+   "mentions": 6,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "verbatim",
+    "link"
+   ],
+   "detected": {
+    "verbatim:True": 1,
+    "link:True": 1
+   }
+  },
+  {
+   "case": 5,
+   "poisoned": true,
+   "mentions": 8,
+   "sources": 7,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 7 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "link",
+    "specifics",
+    "network",
+    "hidden"
+   ],
+   "detected": {
+    "link:True": 2,
+    "specifics:True": 1,
+    "network:True": 1,
+    "hidden:True": 1
+   }
+  },
+  {
+   "case": 6,
+   "poisoned": true,
+   "mentions": 3,
+   "sources": 3,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "SINGLE_ORIGIN",
+   "plain_status": "CONFIRMED by 3 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "verbatim",
+    "verbatim"
+   ],
+   "detected": {
+    "verbatim:True": 2
+   }
+  },
+  {
+   "case": 7,
+   "poisoned": true,
+   "mentions": 8,
+   "sources": 7,
+   "true_origins": 1,
+   "echo_origins": 2,
+   "echo_status": "CONTESTED",
+   "plain_status": "CONFIRMED by 7 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "hidden",
+    "link",
+    "chain",
+    "specifics",
+    "link"
+   ],
+   "detected": {
+    "hidden:False": 1,
+    "link:True": 2,
+    "chain:False": 1,
+    "specifics:True": 1
+   }
+  },
+  {
+   "case": 8,
+   "poisoned": true,
+   "mentions": 6,
+   "sources": 5,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 5 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "verbatim",
+    "network"
+   ],
+   "detected": {
+    "link:True": 1,
+    "verbatim:True": 1,
+    "network:True": 1
+   }
+  },
+  {
+   "case": 9,
+   "poisoned": true,
+   "mentions": 6,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 2,
+   "echo_status": "CONTESTED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "hidden",
+    "chain"
+   ],
+   "detected": {
+    "link:True": 1,
+    "hidden:False": 1,
+    "chain:False": 1
+   }
+  },
+  {
+   "case": 10,
+   "poisoned": true,
+   "mentions": 4,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "SINGLE_ORIGIN",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "verbatim",
+    "network"
+   ],
+   "detected": {
+    "verbatim:True": 1,
+    "network:True": 1
+   }
+  },
+  {
+   "case": 11,
+   "poisoned": true,
+   "mentions": 5,
+   "sources": 5,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "SINGLE_ORIGIN",
+   "plain_status": "CONFIRMED by 5 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "link",
+    "verbatim",
+    "network"
+   ],
+   "detected": {
+    "link:True": 2,
+    "verbatim:True": 1,
+    "network:True": 1
+   }
+  },
+  {
+   "case": 12,
+   "poisoned": true,
+   "mentions": 9,
+   "sources": 8,
+   "true_origins": 1,
+   "echo_origins": 2,
+   "echo_status": "CONTESTED",
+   "plain_status": "CONFIRMED by 8 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "network",
+    "network",
+    "hidden",
+    "link",
+    "specifics",
+    "specifics"
+   ],
+   "detected": {
+    "network:True": 2,
+    "hidden:False": 1,
+    "link:True": 1,
+    "specifics:True": 2
+   }
+  },
+  {
+   "case": 13,
+   "poisoned": true,
+   "mentions": 6,
+   "sources": 6,
+   "true_origins": 1,
+   "echo_origins": 2,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 6 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "verbatim",
+    "verbatim",
+    "verbatim",
+    "hidden",
+    "link"
+   ],
+   "detected": {
+    "verbatim:True": 3,
+    "hidden:False": 1,
+    "link:True": 1
+   }
+  },
+  {
+   "case": 14,
+   "poisoned": true,
+   "mentions": 6,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "verbatim",
+    "network"
+   ],
+   "detected": {
+    "link:True": 1,
+    "verbatim:True": 1,
+    "network:True": 1
+   }
+  },
+  {
+   "case": 15,
+   "poisoned": true,
+   "mentions": 5,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "verbatim",
+    "verbatim"
+   ],
+   "detected": {
+    "link:True": 1,
+    "verbatim:True": 2
+   }
+  },
+  {
+   "case": 16,
+   "poisoned": true,
+   "mentions": 6,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "network"
+   ],
+   "detected": {
+    "link:True": 1,
+    "network:True": 1
+   }
+  },
+  {
+   "case": 17,
+   "poisoned": true,
+   "mentions": 5,
+   "sources": 4,
+   "true_origins": 1,
+   "echo_origins": 1,
+   "echo_status": "DISPUTED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": false,
+   "methods": [
+    "link",
+    "verbatim",
+    "specifics"
+   ],
+   "detected": {
+    "link:True": 1,
+    "verbatim:True": 1,
+    "specifics:True": 1
+   }
+  },
+  {
+   "case": 18,
+   "poisoned": false,
+   "mentions": 2,
+   "sources": 2,
+   "true_origins": 2,
+   "echo_origins": 2,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 2 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [],
+   "detected": {}
+  },
+  {
+   "case": 19,
+   "poisoned": false,
+   "mentions": 6,
+   "sources": 6,
+   "true_origins": 3,
+   "echo_origins": 4,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 6 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "hidden",
+    "specifics"
+   ],
+   "detected": {
+    "hidden:False": 1,
+    "specifics:True": 1
+   }
+  },
+  {
+   "case": 20,
+   "poisoned": false,
+   "mentions": 3,
+   "sources": 3,
+   "true_origins": 2,
+   "echo_origins": 2,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 3 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "verbatim"
+   ],
+   "detected": {
+    "verbatim:True": 1
+   }
+  },
+  {
+   "case": 21,
+   "poisoned": false,
+   "mentions": 5,
+   "sources": 5,
+   "true_origins": 2,
+   "echo_origins": 2,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 5 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "link",
+    "link"
+   ],
+   "detected": {
+    "link:True": 2
+   }
+  },
+  {
+   "case": 22,
+   "poisoned": false,
+   "mentions": 3,
+   "sources": 3,
+   "true_origins": 2,
+   "echo_origins": 2,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 3 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [],
+   "detected": {}
+  },
+  {
+   "case": 23,
+   "poisoned": false,
+   "mentions": 3,
+   "sources": 3,
+   "true_origins": 2,
+   "echo_origins": 2,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 3 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "link"
+   ],
+   "detected": {
+    "link:True": 1
+   }
+  },
+  {
+   "case": 24,
+   "poisoned": false,
+   "mentions": 5,
+   "sources": 5,
+   "true_origins": 3,
+   "echo_origins": 3,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 5 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "link"
+   ],
+   "detected": {
+    "link:True": 1
+   }
+  },
+  {
+   "case": 25,
+   "poisoned": false,
+   "mentions": 5,
+   "sources": 5,
+   "true_origins": 3,
+   "echo_origins": 3,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 5 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "link"
+   ],
+   "detected": {
+    "link:True": 1
+   }
+  },
+  {
+   "case": 26,
+   "poisoned": false,
+   "mentions": 5,
+   "sources": 5,
+   "true_origins": 3,
+   "echo_origins": 3,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 5 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "specifics"
+   ],
+   "detected": {
+    "specifics:True": 1
+   }
+  },
+  {
+   "case": 27,
+   "poisoned": false,
+   "mentions": 4,
+   "sources": 4,
+   "true_origins": 3,
+   "echo_origins": 4,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "hidden"
+   ],
+   "detected": {
+    "hidden:False": 1
+   }
+  },
+  {
+   "case": 28,
+   "poisoned": false,
+   "mentions": 4,
+   "sources": 4,
+   "true_origins": 3,
+   "echo_origins": 3,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [],
+   "detected": {}
+  },
+  {
+   "case": 29,
+   "poisoned": false,
+   "mentions": 4,
+   "sources": 4,
+   "true_origins": 3,
+   "echo_origins": 4,
+   "echo_status": "VERIFIED",
+   "plain_status": "CONFIRMED by 4 sources",
+   "plain_trusts": true,
+   "echo_trusts": true,
+   "methods": [
+    "hidden"
+   ],
+   "detected": {
+    "hidden:False": 1
+   }
+  }
+ ]
+}

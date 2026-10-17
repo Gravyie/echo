@@ -276,19 +276,23 @@ def _summarize(tool: str, r: dict) -> str:
     if "error" in r:
         return r["error"]
     if tool == "recall_beliefs":
-        return f"{len(r['beliefs'])} beliefs: " + "; ".join(
-            f"{b['statement'][:60]}… {b['sources']} sources → {b['origins']} origins" for b in r["beliefs"][:3])
+        return f"{len(r['beliefs'])} beliefs. Top: " + "; ".join(
+            f"{b['statement'][:52]}… ({b['sources']} → {b['origins']})" for b in r["beliefs"][:2])
     if tool == "search_memory":
         return f"{len(r['memories'])} memories: " + "; ".join(
             f"{m['memory'][:60]}… ({m['status']})" for m in r["memories"][:3])
     if tool == "inspect_belief":
-        echo = f" · echo: {r['sources']} sources, {r['independent_origins']} origin(s)" if r["sources"] > r["independent_origins"] else ""
-        return f"{r['status']} · {r['independent_origins']} independent origin(s) for, {r['contradicting_origins']} against{echo}"
+        echo = f" · echo: {r['sources']} sources, {_n(r['independent_origins'], 'origin')}" if r["sources"] > r["independent_origins"] else ""
+        return f"{r['status']} · {_n(r['independent_origins'], 'independent origin')} for, {r['contradicting_origins']} against{echo}"
     if tool == "load_bearing_origins":
         return "; ".join(f"{o['title'][:40]} (blast radius {o['beliefs']})" for o in r["origins"][:3])
     if tool == "query_graph":
         return f"{len(r.get('rows', []))} rows"
     return ""
+
+
+def _n(k: int, word: str) -> str:
+    return f"{k} {word}{'' if k == 1 else 's'}"
 
 
 def _plain_answer(mems: list[dict]) -> str:
@@ -316,18 +320,18 @@ def _echo_answer(reports: list[dict]) -> str:
     head = []
     if bad:
         b = bad[0]
-        head.append(f"**Don't rely on “{b['statement'].rstrip('.')}”: it has {b['sources']} sources but "
-                    f"{b['independent_origins']} independent origin(s), and {b['contradicting_origins']} independent "
-                    "origin(s) contradict it.**")
+        head.append(f"**Don't rely on “{b['statement'].rstrip('.')}”. {_n(b['sources'], 'source')} say it, but they "
+                    f"trace back to {_n(b['independent_origins'], 'independent origin')}, and "
+                    f"{_n(b['contradicting_origins'], 'independent origin')} contradict it.**")
     if good:
-        head.append(f"**What does hold up: {good[0]['statement']}** ({good[0]['independent_origins']} independent origins.)")
+        head.append(f"What does hold up: {good[0]['statement']} ({_n(good[0]['independent_origins'], 'independent origin')}).")
     if not head:
         t = thin[0]
-        head.append(f"**Unverified: {t['statement']}** It rests on {t['independent_origins']} origin(s).")
+        head.append(f"**Unverified: {t['statement']}** It rests on {_n(t['independent_origins'], 'origin')}.")
     lines = [" ".join(head), ""]
     for r in reports:
         origin_titles = [o["title"] for c in r["clusters"] if c["stance"] == "supports" and c["origin"] for o in c["origin"]]
-        echo = f" — {r['sources']} sources, {r['independent_origins']} origin" if r["sources"] > r["independent_origins"] else ""
+        echo = f" ({r['sources']} sources, {_n(r['independent_origins'], 'origin')})" if r["sources"] > r["independent_origins"] else ""
         lines.append(f"- **{r['status'].replace('_', ' ').title()}**: {r['statement']}{echo} {cites(r, 'supports')}"
                      + (f" · against: {cites(r, 'contradicts')}" if r["contradicting_origins"] else ""))
         if origin_titles and r["status"] != "VERIFIED":

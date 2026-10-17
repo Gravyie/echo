@@ -172,6 +172,8 @@ def score(
             # Cluster weight: the most trustworthy live origin it rests on.
             # A note the agent wrote itself is never evidence on its own.
             w = max((info[r].weight() for r in roots if r in info), default=0.0)
+            if all(info.get(m) and info[m].kind == "agent" for m in members):
+                w = 0.0  # notes the agent wrote are never evidence on their own
             reasons = sorted({v for (a, b), v in why.items() if a in members and b in members})
             clusters.append(
                 Cluster(stance, sorted(members), roots, dead_roots, sorted(owners), round(w, 3),

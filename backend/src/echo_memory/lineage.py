@@ -245,6 +245,8 @@ def detect(new: SourceDoc, corpus: list[SourceDoc], order: dict[str, int] | None
     # Agent notes: explicit derivation, nothing to infer.
     for up in new.derived_from:
         deps.append(Dependence("DERIVED_FROM", new.id, up, "agent-note", 1.0, "written by an agent from this source"))
+    if new.kind == "agent":  # an agent's note has exactly the lineage it declares, nothing inferred
+        return deps
 
     # Explicit citations (resolved later against stubs when the target is unknown).
     own = normalize_url(new.url) if new.url else None
