@@ -113,9 +113,22 @@ def live_ancestry(start: str, parents: dict[str, list[str]], info: dict[str, Sou
         if not ups:
             live.add(n)
         stack.extend(ups)
-    if not live and not dead:  # pure cycle
-        live = {n for n in seen if not (info.get(n) and info[n].retracted)}
+    if not live and not dead:  # no root: the origin is the citation loop itself
+        live = {n for n in seen if _on_cycle(n, parents, seen)}
     return seen, live, dead
+
+
+def _on_cycle(n: str, parents: dict[str, list[str]], within: set[str]) -> bool:
+    stack, seen = list(parents.get(n, [])), set()
+    while stack:
+        x = stack.pop()
+        if x == n:
+            return True
+        if x in seen or x not in within:
+            continue
+        seen.add(x)
+        stack.extend(parents.get(x, []))
+    return False
 
 
 def _logodds(w: float) -> float:

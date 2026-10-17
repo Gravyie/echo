@@ -101,7 +101,13 @@ export function BeliefInspector({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="text-[10.5px] font-medium text-faint">
-                          {c.weight > 0 ? "Origin" : c.dead_roots.length ? "Origin retracted" : "No evidential weight"}
+                          {c.weight > 0
+                            ? c.roots.length > 1
+                              ? "Origin: a citation loop, counted once"
+                              : "Origin"
+                            : c.dead_roots.length
+                              ? "Origin retracted"
+                              : "No evidential weight"}
                         </div>
                         {(c.roots.length ? c.roots : c.dead_roots).map((r) => (
                           <button key={r} onClick={() => onSelectSource(r)} className="mt-0.5 block w-full truncate text-left text-[13px] font-medium text-accent hover:underline">
