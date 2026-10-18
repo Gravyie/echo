@@ -185,7 +185,8 @@ body {
   --xy-controls-button-color: var(--muted);
   --xy-controls-button-border-color: var(--line);
 }
-.react-flow__attribution { display: none; }
+.react-flow__attribution { background: transparent; opacity: 0.45; font-size: 9px; }
+.react-flow__attribution a { color: var(--faint); }
 .react-flow__edge-textbg { fill: var(--bg); }
 
 @media (prefers-reduced-motion: reduce) {

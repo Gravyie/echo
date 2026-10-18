@@ -1,6 +1,17 @@
 "use client";
 
-import { ArrowCounterClockwise, ChatCircleText, Code, Graph as GraphIcon, Plus, Question, TreeStructure, WarningCircle } from "@phosphor-icons/react";
+import {
+  ArrowCounterClockwise,
+  ArrowsInSimple,
+  ArrowsOutSimple,
+  ChatCircleText,
+  Code,
+  Graph as GraphIcon,
+  Plus,
+  Question,
+  TreeStructure,
+  WarningCircle,
+} from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mark, ThemeToggle } from "../Brand";
@@ -20,7 +31,7 @@ import {
   type WorkspaceInfo,
 } from "@/lib/api";
 import { AskPanel, applyEvent, type Step, type Turn } from "./AskPanel";
-import { GraphView, type Highlight } from "./GraphView";
+import { MapView, type Highlight } from "./MapView";
 import { Guide, GuidePill, type GuideKey, type GuideStep } from "./Guide";
 import { LineageView } from "./LineageView";
 import { Tour, type TourStep } from "./Tour";
@@ -108,6 +119,8 @@ export default function Studio() {
   const turnId = useRef(0);
   const [view, setView] = useState<"map" | "lineage">("map");
   const [tourOpen, setTourOpen] = useState(false);
+  // Full-width canvas: hides both side panels to explore the map or a lineage.
+  const [expanded, setExpanded] = useState(false);
 
   // The lineage view stays on the last belief opened, even while a source is inspected (e.g. right after a retraction).
   const [lineageId, setLineageId] = useState<string | null>(null);
@@ -571,10 +584,10 @@ export default function Studio() {
       </header>
 
       <div className={`grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden ${
-          wide ? "lg:grid-cols-[380px_minmax(0,1fr)]" : "lg:grid-cols-[380px_minmax(0,1fr)_370px]"
+          expanded ? "lg:grid-cols-[minmax(0,1fr)]" : wide ? "lg:grid-cols-[380px_minmax(0,1fr)]" : "lg:grid-cols-[380px_minmax(0,1fr)_370px]"
         }`}>
         {/* left: agent + tools */}
-        <aside data-tour="agent" className="order-2 flex min-h-[70dvh] flex-col border-line bg-surface lg:order-1 lg:min-h-0 lg:border-r">
+        <aside data-tour="agent" className={`order-2 flex min-h-[70dvh] flex-col border-line bg-surface lg:order-1 lg:min-h-0 lg:border-r ${expanded ? "lg:hidden" : ""}`}>
           <div className="flex shrink-0 gap-1 border-b border-line px-3 pt-3">
             {(
               [
@@ -625,7 +638,7 @@ export default function Studio() {
 
         {/* center: graph */}
         <main data-tour="canvas" className="relative order-1 h-[62dvh] min-h-[380px] overflow-hidden bg-bg lg:order-2 lg:h-auto">
-          {view === "map" && <div className="dots absolute inset-0 opacity-70" />}
+
           {loading ? (
             <div className="absolute inset-0 grid place-items-center">
               <div className="text-center">
@@ -643,7 +656,7 @@ export default function Studio() {
               onSelectSource={(id) => setSel({ kind: "source", id })}
             />
           ) : (
-            <GraphView
+            <MapView
               nodes={graph.nodes}
               edges={graph.edges}
               highlight={highlight}
@@ -674,6 +687,15 @@ export default function Studio() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => setExpanded((e) => !e)}
+              aria-pressed={expanded}
+              title={expanded ? "Show the panels" : "Expand the canvas"}
+              className="hidden items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11.5px] text-muted shadow-card hover:text-text lg:flex"
+            >
+              {expanded ? <ArrowsInSimple size={13} /> : <ArrowsOutSimple size={13} />}
+              {expanded ? "Panels" : "Expand"}
+            </button>
             {highlight && view === "map" && (
               <button
                 onClick={() => {
@@ -735,7 +757,7 @@ export default function Studio() {
         </main>
 
         {/* right: inspector / overview */}
-        <aside data-tour="beliefs" className={`order-3 min-h-[60dvh] border-line bg-surface lg:min-h-0 lg:border-l ${wide ? "lg:hidden" : ""}`}>
+        <aside data-tour="beliefs" className={`order-3 min-h-[60dvh] border-line bg-surface lg:min-h-0 lg:border-l ${wide || expanded ? "lg:hidden" : ""}`}>
           <div className="scrollbar-thin h-full overflow-y-auto">
             {sel?.kind === "belief" && report ? (
               <BeliefInspector report={report} onSelectSource={(id) => setSel({ kind: "source", id })} onBack={() => setSel(null)} />
@@ -804,13 +826,14 @@ function Legend({
   return (
     <div className="pointer-events-none absolute right-3 top-3 z-10 hidden max-w-[calc(100%-330px)] justify-end xl:flex">
       <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5 rounded-lg border border-line bg-surface/90 px-3 py-1.5 text-[11px] text-muted shadow-card backdrop-blur">
-        {item(<span className="size-2.5 rounded-full bg-accent" />, "Origin")}
-        {item(<span className="size-2.5 rounded-full border border-muted" />, "Source")}
-        {item(<span className="size-2.5 border border-agent" />, "Agent note")}
-        {item(<span className="size-2.5 rounded-[3px] border border-ok bg-ok/20" />, "Belief")}
+        {item(<span className="h-2.5 w-3.5 rounded-[3px] border border-accent bg-surface" />, "Origin")}
+        {item(<span className="h-2.5 w-3.5 rounded-[3px] border border-line-strong bg-surface" />, "Copy")}
+        {item(<span className="h-2.5 w-3.5 rounded-[3px] border border-dashed border-accent/50 bg-accent-soft" />, "Family")}
         {item(<span className="h-px w-3.5 bg-accent" />, "Copied / cites")}
+        {item(<span className="h-px w-3.5 bg-ok" />, "Supports")}
+        {item(<span className="h-0 w-3.5 border-t border-dashed border-bad" />, "Contradicts")}
         <span className="h-3 w-px bg-line-strong" />
-        {toggle(showOwners, setShowOwners, "Owners")}
+        {toggle(showOwners, setShowOwners, "Owner tags")}
         {toggle(showAgent, setShowAgent, "Agent memory")}
       </div>
     </div>

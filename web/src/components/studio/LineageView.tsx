@@ -228,7 +228,6 @@ function Flow({ report, onSelectSource }: { report: Report; onSelectSource: (id:
       minZoom={0.2}
       maxZoom={1.8}
       fitView
-      proOptions={{ hideAttribution: true }}
       onNodeClick={(_, n) => {
         if (n.type === "source" && !n.id.startsWith("url:") && !n.id.startsWith("id:")) onSelectSource(n.id);
       }}
