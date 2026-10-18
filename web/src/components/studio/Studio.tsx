@@ -634,10 +634,10 @@ export default function Studio() {
       <header className="relative flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <Mark size={28} />
-          <span className="display text-[21px] leading-none">Echo</span>
+          <span className="display hidden text-[21px] leading-none sm:inline">Echo</span>
         </Link>
-        <span className="text-line-strong">/</span>
-        <div data-tour="scenarios" className="scrollbar-thin flex gap-0.5 overflow-x-auto rounded-lg border border-line bg-bg p-0.5">
+        <span className="hidden text-line-strong sm:inline">/</span>
+        <div data-tour="scenarios" className="scrollbar-thin flex min-w-0 gap-0.5 overflow-x-auto rounded-lg border border-line bg-bg p-0.5">
           {scenarioTabs.map((s) => (
             <button
               key={s.id}
@@ -722,13 +722,13 @@ export default function Studio() {
           <button onClick={() => setSheet("settings")} aria-label="Settings" className="grid size-8 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-text">
             <GearSix size={16} />
           </button>
-          <ThemeToggle />
+          <ThemeToggle className="hidden sm:grid" />
           <button
             onClick={reset}
             disabled={busy || !ws}
             className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] text-muted hover:text-text disabled:opacity-40"
           >
-            <ArrowCounterClockwise size={13} /> Reset
+            <ArrowCounterClockwise size={13} /> <span className="hidden sm:inline">Reset</span>
           </button>
         </div>
       </header>
