@@ -18,6 +18,7 @@ Graph model
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import threading
 import time
@@ -33,6 +34,8 @@ from .scoring import SourceInfo, SupportItem, score
 
 DEPTH = settings().max_lineage_depth
 _locks: dict[str, threading.Lock] = {}
+
+log = logging.getLogger(__name__)
 
 
 def ws_lock(ws: str) -> threading.Lock:
@@ -361,7 +364,7 @@ class EchoMemory:
     def load_bearing(self, limit: int = 8) -> list[dict[str, Any]]:
         """Origins the most beliefs rest on: PageRank over lineage + blast radius."""
         with capture() as log:
-            ranked = self.db.q(
+            ranked = self._algo(
                 "CALL algo.pageRank('Source', null) YIELD node, score "
                 "WHERE node.kind <> 'agent' "
                 f"AND NOT (node)-[:{LINEAGE}]->(:Source) "
@@ -383,7 +386,7 @@ class EchoMemory:
     def families(self) -> dict[str, Any]:
         """Weakly connected components of the lineage + ownership graph."""
         with capture() as log:
-            rows = self.db.q(
+            rows = self._algo(
                 "CALL algo.WCC({nodeLabels:['Source','Owner'], "
                 "relationshipTypes:['CITES','COPIED_FROM','DERIVED_FROM','PUBLISHED_BY']}) "
                 "YIELD node, componentId WITH componentId, collect(node) AS ns "
@@ -397,7 +400,7 @@ class EchoMemory:
         """Suspected content rings: label-propagation communities of web sources bound by
         copying and shared network fingerprints (affiliate tags, analytics IDs)."""
         with capture() as log:
-            rows = self.db.q(
+            rows = self._algo(
                 "CALL algo.labelPropagation({nodeLabels:['Source','Owner'], "
                 "relationshipTypes:['COPIED_FROM','PUBLISHED_BY']}) "
                 "YIELD node, communityId WITH communityId, collect(node) AS ns "
@@ -409,6 +412,15 @@ class EchoMemory:
                 ro=True,
             )
         return {"rings": rows, "cypher": log.entries}
+
+    def _algo(self, cypher: str, params: dict | None = None, **kw) -> list[dict]:
+        """Graph algorithms error out on a graph that lacks the labels or relationship types they
+        name (a brand-new memory, or one with no copies yet). That just means: no results."""
+        try:
+            return self.db.q(cypher, params or {}, **kw)
+        except Exception as e:  # noqa: BLE001
+            log.info("algorithm returned nothing on this graph: %s", e)
+            return []
 
     def stats(self) -> dict[str, Any]:
         r = self.db.one(

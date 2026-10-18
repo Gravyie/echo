@@ -3,11 +3,20 @@
 import { Play } from "@phosphor-icons/react";
 import { useState } from "react";
 import { api, type Rescore } from "@/lib/api";
+import { EXAMPLES, loadExamples } from "@/lib/examples";
 import { StatusPill } from "./Inspector";
 
 type IngestResult = Awaited<ReturnType<typeof api.ingest>>;
 
-export function IngestPanel({ ws, onDone }: { ws: string; onDone: (r: IngestResult) => void }) {
+export function IngestPanel({
+  ws,
+  onDone,
+  onExamples,
+}: {
+  ws: string;
+  onDone: (r: IngestResult) => void;
+  onExamples?: () => void;
+}) {
   const [mode, setMode] = useState<"url" | "text">("url");
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
@@ -15,6 +24,20 @@ export function IngestPanel({ ws, onDone }: { ws: string; onDone: (r: IngestResu
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<IngestResult | null>(null);
+  const [exStep, setExStep] = useState<number | null>(null);
+
+  const examples = async () => {
+    setErr(null);
+    setRes(null);
+    try {
+      await loadExamples(ws, setExStep);
+      onExamples?.();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setExStep(null);
+    }
+  };
 
   const go = async () => {
     setBusy(true);
@@ -39,9 +62,22 @@ export function IngestPanel({ ws, onDone }: { ws: string; onDone: (r: IngestResu
           Echo extracts the claims, matches them to beliefs already in memory, and infers lineage against every stored source.
         </p>
       </div>
+      <div className="rounded-xl border border-line bg-surface p-3.5">
+        <div className="text-[13px] font-medium text-text">Try it with three example pages</div>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+          A lab test, a news site that reuses its figures, and an independent lab. Watch Echo fold the copy into its origin.
+        </p>
+        <button
+          onClick={examples}
+          disabled={exStep !== null || busy}
+          className="mt-3 w-full rounded-md border border-line-strong py-2 text-[12.5px] font-medium text-text transition-colors hover:bg-surface-2 disabled:opacity-50"
+        >
+          {exStep !== null ? `Reading ${EXAMPLES[exStep].author}… (${exStep + 1}/${EXAMPLES.length})` : "Load the examples"}
+        </button>
+      </div>
       <div className="flex gap-1 rounded-lg bg-surface-2 p-1 text-[12px]">
         {(["url", "text"] as const).map((m) => (
-          <button key={m} onClick={() => setMode(m)} className={`flex-1 rounded-md py-1.5 ${mode === m ? "bg-surface-3 text-text" : "text-faint"}`}>
+          <button key={m} onClick={() => setMode(m)} className={`flex-1 rounded-md py-1.5 ${mode === m ? "bg-surface text-text shadow-card" : "text-faint hover:text-muted"}`}>
             {m === "url" ? "From a URL" : "Paste text"}
           </button>
         ))}
@@ -79,7 +115,8 @@ export function IngestPanel({ ws, onDone }: { ws: string; onDone: (r: IngestResu
       {res && (
         <div className="space-y-3 rounded-xl border border-line bg-surface p-3.5 text-[12.5px]">
           <div className="text-muted">
-            {res.claims.length} claims via {res.extraction === "llm" ? "the LLM" : "the offline extractor"}, {res.edges.length} lineage edges
+            {res.claims.length} {res.claims.length === 1 ? "claim" : "claims"} via {res.extraction === "llm" ? "the LLM" : "the offline extractor"},{" "}
+            {res.edges.length} lineage {res.edges.length === 1 ? "edge" : "edges"}
           </div>
           {res.edges.length > 0 && (
             <ul className="space-y-1 font-mono text-[11px] text-faint">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GithubLogo } from "@phosphor-icons/react";
-import { Mark } from "@/components/Brand";
+import { Mark, ThemeToggle } from "@/components/Brand";
 import { REPO_URL } from "@/lib/site";
 
 const LINKS = [
@@ -13,6 +13,37 @@ const LINKS = [
   ["#falkordb", "FalkorDB"],
   ["#mcp", "MCP"],
 ];
+
+/**
+ * Glide back to the top. Done frame by frame because the browser's smooth scroll gets cancelled
+ * when the pinned product tour re-renders mid-scroll. Any wheel or touch from the visitor stops it.
+ */
+function glideToTop() {
+  const start = window.scrollY;
+  if (start <= 0) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    window.scrollTo(0, 0);
+    return;
+  }
+  const duration = Math.min(1200, 450 + start * 0.06);
+  const t0 = performance.now();
+  let stopped = false;
+  const stop = () => (stopped = true);
+  window.addEventListener("wheel", stop, { once: true, passive: true });
+  window.addEventListener("touchstart", stop, { once: true, passive: true });
+  const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const frame = (now: number) => {
+    if (stopped) return;
+    const t = Math.min(1, (now - t0) / duration);
+    window.scrollTo(0, Math.round(start * (1 - ease(t))));
+    if (t < 1) requestAnimationFrame(frame);
+    else {
+      window.removeEventListener("wheel", stop);
+      window.removeEventListener("touchstart", stop);
+    }
+  };
+  requestAnimationFrame(frame);
+}
 
 /** Light-on-painting over the hero, paper once the page scrolls past it. */
 export function SiteNav() {
@@ -38,7 +69,7 @@ export function SiteNav() {
             // already on the landing page: glide back to the top instead of a no-op navigation
             e.preventDefault();
             window.history.replaceState(null, "", "/");
-            window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+            glideToTop();
           }}
           className="flex items-center gap-2"
         >
@@ -60,6 +91,7 @@ export function SiteNav() {
           >
             <GithubLogo size={18} />
           </a>
+          <ThemeToggle className={solid ? "" : "!text-white/80 hover:!bg-white/10 hover:!text-white"} />
           <Link
             href="/studio"
             className={`ml-2 rounded-md px-3.5 py-2 text-[13.5px] font-medium transition-[transform,background-color] active:scale-[0.98] ${

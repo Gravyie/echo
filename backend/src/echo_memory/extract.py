@@ -65,8 +65,10 @@ def extract_claims(mem: EchoMemory, title: str, text: str) -> tuple[list[Claim],
                 belief = bid.removeprefix("b:") if bid and bid in known else None
                 if belief:
                     st = known[bid]["statement"]
+                # A page can only contradict a belief that exists; otherwise the claim is its own, and it supports it.
+                contra = c.get("stance") == "contradicts" and belief is not None
                 claims.append(Claim(statement=st, subject=(c.get("subject") or title)[:80],
-                                    stance="contradicts" if c.get("stance") == "contradicts" else "supports",
+                                    stance="contradicts" if contra else "supports",
                                     quote=(c.get("quote") or st)[:400], belief=belief,
                                     attributed_to=c.get("attributed_to") or None))
             return claims, "llm"

@@ -94,7 +94,7 @@ export function CollapseViz() {
   const oy = g.origin.y;
   // The finale sits dead centre: the count above, the origin card, the verdict below.
   const fx = (g.w - g.origin.w) / 2;
-  const fy = (g.h - g.origin.h) / 2 + 26;
+  const fy = (g.h - g.origin.h) / 2 + 14;
 
   return (
     <div ref={box} className="relative h-full w-full select-none overflow-hidden">
@@ -257,7 +257,7 @@ export function CollapseViz() {
           <AnimatePresence>
             {collapsed && (
               <motion.div
-                className="mt-4 flex items-center justify-center gap-2.5"
+                className="mt-8 flex items-center justify-center gap-2.5"
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}

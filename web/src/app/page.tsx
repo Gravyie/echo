@@ -413,7 +413,7 @@ export default function Home() {
             <span className="eyebrow">How Echo works</span>
             <h2 className="display mt-5 max-w-[18ch] text-[clamp(2.2rem,4.4vw,3.6rem)] leading-[1.05]">Link. Collapse. Decide.</h2>
           </Reveal>
-          <div className="mt-10">
+          <div className="mt-12">
             <HowItWorks />
           </div>
         </Section>

@@ -41,52 +41,87 @@ RETURN DISTINCT b.id`,
   },
 ];
 
-function Step({ i, onActive, children }: { i: number; onActive: (i: number) => void; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { margin: "-45% 0px -45% 0px" });
-  useEffect(() => {
-    if (inView) onActive(i);
-  }, [inView, i, onActive]);
-  return (
-    <div ref={ref} className="min-h-[52vh] py-10 md:py-16">
-      {children}
-    </div>
-  );
-}
+const ADVANCE_MS = 7000;
 
+/** Three steps, one Cypher panel. Advances on its own until the visitor picks a step. */
 export function HowItWorks() {
   const [active, setActive] = useState(0);
+  const [auto, setAuto] = useState(true);
+  const [paused, setPaused] = useState(false);
   const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { amount: 0.4 });
+  const running = auto && !paused && inView && !reduce;
+
+  useEffect(() => {
+    if (!running) return;
+    const t = window.setTimeout(() => setActive((a) => (a + 1) % STEPS.length), ADVANCE_MS);
+    return () => window.clearTimeout(t);
+  }, [running, active]);
+
   return (
-    <div className="grid grid-cols-1 gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-16">
-      <div>
-        {STEPS.map((s, i) => (
-          <Step key={s.title} i={i} onActive={setActive}>
-            <div className={`transition-opacity duration-500 ${active === i ? "opacity-100" : "md:opacity-35"}`}>
-              <div className="font-mono text-xs text-accent">{s.n}</div>
-              <h3 className="display mt-2 text-4xl md:text-5xl">{s.title}</h3>
-              <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-muted">{s.body}</p>
-              <div className="mt-6 md:hidden">
-                <CypherBlock code={s.code} />
-              </div>
-            </div>
-          </Step>
-        ))}
-      </div>
+    <div
+      ref={ref}
+      className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-14"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <ol className="border-t border-line">
+        {STEPS.map((s, i) => {
+          const on = active === i;
+          return (
+            <li key={s.title} className="border-b border-line">
+              <button
+                onClick={() => {
+                  setActive(i);
+                  setAuto(false);
+                }}
+                aria-expanded={on}
+                className="group relative w-full py-5 text-left"
+              >
+                <div className="flex items-baseline gap-4">
+                  <span className={`font-mono text-[11px] ${on ? "text-accent" : "text-faint"}`}>{s.n}</span>
+                  <span className={`display text-[30px] leading-none transition-colors ${on ? "text-text" : "text-faint group-hover:text-muted"}`}>{s.title}</span>
+                </div>
+                <motion.div
+                  className="overflow-hidden"
+                  initial={false}
+                  animate={{ height: on ? "auto" : 0, opacity: on ? 1 : 0 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <p className="max-w-[52ch] pl-[30px] pt-3 text-[15px] leading-relaxed text-muted">{s.body}</p>
+                  <div className="mt-5 md:hidden">
+                    <CypherBlock code={s.code} />
+                  </div>
+                </motion.div>
+                {on && (
+                  <span className="absolute inset-x-0 -bottom-px h-px overflow-hidden">
+                    <motion.span
+                      key={`${i}-${running}`}
+                      className="block h-full bg-accent"
+                      initial={{ width: running ? "0%" : "100%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: running ? ADVANCE_MS / 1000 : 0, ease: "linear" }}
+                    />
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
       <div className="hidden md:block">
-        <div className="sticky top-28">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={reduce ? false : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? undefined : { opacity: 0, y: -12 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <CypherBlock code={STEPS[active].code} title={`${STEPS[active].title.toLowerCase()}.cypher`} />
-            </motion.div>
-          </AnimatePresence>
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={active}
+            initial={reduce ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduce ? undefined : { opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <CypherBlock code={STEPS[active].code} title={`${STEPS[active].title.toLowerCase()}.cypher`} />
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from "react-force-graph-2d";
-import { forceCollide } from "d3-force";
+import { forceCollide, forceX, forceY } from "d3-force";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GraphEdge, GraphNode, Status } from "@/lib/api";
 
@@ -11,7 +11,7 @@ export interface Highlight {
   focus?: string;
 }
 
-type N = NodeObject & GraphNode & { isRoot?: boolean; dependents?: number };
+type N = NodeObject & GraphNode & { isRoot?: boolean; dependents?: number; depth?: number };
 type L = LinkObject & GraphEdge & { key: string };
 
 /** A label queued during the node pass and drawn last, on top, with overlap culling. */
@@ -24,6 +24,12 @@ interface Label {
 }
 
 const LINEAGE = new Set(["CITES", "COPIED_FROM", "DERIVED_FROM"]);
+const COL = { source: (d: number) => -300 + d * 140, note: 150, belief: 300 };
+const COL_LABELS: [number, string][] = [
+  [COL.source(0), "ORIGINS"],
+  [COL.source(1), "COPIES & CITATIONS"],
+  [COL.belief, "BELIEFS"],
+];
 const STATUS_VAR: Record<Status, string> = {
   VERIFIED: "--ok",
   SINGLE_ORIGIN: "--single",
@@ -122,18 +128,35 @@ export function GraphView({
   }, []);
 
   const data = useMemo(() => {
+    // Subject (Entity) nodes only add noise to the map; owners and fingerprints are opt-in.
     const keep = (n: GraphNode) =>
-      (showOwners || n.label !== "Owner" || n.kind === "network") && (showAgent || (n.label !== "Agent" && n.label !== "Episode" && n.kind !== "agent"));
+      n.label !== "Entity" &&
+      (showOwners || n.label !== "Owner") &&
+      (showAgent || (n.label !== "Agent" && n.label !== "Episode" && n.kind !== "agent"));
     const ns = nodes.filter(keep);
     const ids = new Set(ns.map((n) => n.id));
     const ls = edges.filter((e) => ids.has(e.source) && ids.has(e.target) && e.type !== "RAN");
     const hasUp = new Set(ls.filter((e) => LINEAGE.has(e.type)).map((e) => e.source));
     const downCount = new Map<string, number>();
     ls.filter((e) => LINEAGE.has(e.type)).forEach((e) => downCount.set(e.target, (downCount.get(e.target) ?? 0) + 1));
+    // Hops from a source back to its origin, so the map can lay out origins → copies → beliefs.
+    const ups = new Map<string, string[]>();
+    ls.filter((e) => LINEAGE.has(e.type)).forEach((e) => ups.set(e.source, [...(ups.get(e.source) ?? []), e.target]));
+    const depthMemo = new Map<string, number>();
+    const depthOf = (id: string, seen: Set<string> = new Set()): number => {
+      if (depthMemo.has(id)) return depthMemo.get(id)!;
+      if (seen.has(id)) return 0; // a citation loop: treat as an origin
+      seen.add(id);
+      const u = ups.get(id) ?? [];
+      const d = u.length ? 1 + Math.max(...u.map((x) => depthOf(x, seen))) : 0;
+      depthMemo.set(id, d);
+      return d;
+    };
     const out: N[] = ns.map((n) => {
       const p = positions.current.get(n.id);
       return {
         ...n,
+        depth: n.label === "Source" ? Math.min(3, depthOf(n.id)) : undefined,
         isRoot: n.label === "Source" && n.kind !== "agent" && !hasUp.has(n.id) && (downCount.get(n.id) ?? 0) > 0,
         dependents: downCount.get(n.id) ?? 0,
         ...(p ? { x: p.x, y: p.y } : {}),
@@ -150,17 +173,29 @@ export function GraphView({
     if (!f) return;
     const link = f.d3Force("link") as unknown as { distance: (fn: (l: L) => number) => { strength: (fn: (l: L) => number) => void } } | undefined;
     link
-      ?.distance((l) => (LINEAGE.has(l.type) ? 62 : l.type === "PUBLISHED_BY" ? 26 : l.type === "ABOUT" ? 80 : 110))
-      .strength((l) => (LINEAGE.has(l.type) ? 0.9 : l.type === "PUBLISHED_BY" ? 0.7 : 0.25));
-    const charge = f.d3Force("charge") as unknown as { strength: (fn: (n: N) => number) => void } | undefined;
-    charge?.strength((n: N) => (n.label === "Belief" ? -340 : n.label === "Entity" ? -180 : -200));
+      ?.distance((l) => (LINEAGE.has(l.type) ? 150 : l.type === "PUBLISHED_BY" ? 30 : 220))
+      .strength((l) => (LINEAGE.has(l.type) ? 0.15 : l.type === "PUBLISHED_BY" ? 0.6 : 0.02));
+    const charge = f.d3Force("charge") as unknown as { strength: (fn: (n: N) => number) => void; distanceMax: (d: number) => void } | undefined;
+    charge?.strength((n: N) => (n.label === "Belief" ? -520 : -300));
+    charge?.distanceMax(520);
+    f.d3Force("collide", forceCollide<N>((n) => (n.label === "Belief" ? 46 : n.label === "Owner" ? 10 : 30)).strength(1) as never);
+    // Columns: origins on the left, copies by how far they are from their origin, agent notes, then beliefs.
     f.d3Force(
-      "collide",
-      forceCollide<N>((n) => (n.label === "Belief" ? 34 : n.label === "Entity" ? 30 : n.label === "Owner" ? 8 : 14)).strength(0.9) as never,
+      "x",
+      forceX<N>((n) => (n.label === "Belief" ? COL.belief : n.kind === "agent" ? COL.note : n.label === "Source" ? COL.source(n.depth ?? 0) : 0)).strength(
+        (n) => (n.label === "Owner" ? 0 : 0.7),
+      ) as never,
     );
+    f.d3Force("y", forceY<N>(0).strength(0.015) as never);
 
     f.d3ReheatSimulation();
-  }, [data]);
+    // Frame early (the layout is pre-warmed), then again when the simulation settles (onEngineStop).
+    if (!fitted.current && !highlight) {
+      const t = window.setTimeout(() => fg.current?.zoomToFit(300, size.w < 600 ? 40 : 110), 250);
+      return () => window.clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, pal]);
 
   const lit = useCallback(
     (id: string) => !highlight || highlight.nodes.size === 0 || highlight.nodes.has(id) || id === selected,
@@ -238,7 +273,7 @@ export function GraphView({
           ctx.lineTo(x + r + 2, y + r + 2);
           ctx.stroke();
         }
-        if (scale > 1.8 || isSel || node.id === hover || (highlight?.nodes.has(node.id) && highlight.nodes.size < 14) || node.isRoot) {
+        if (scale > 0.55 || isSel || node.id === hover || (highlight?.nodes.has(node.id) && highlight.nodes.size < 14) || node.isRoot) {
           const fs = 10.5 / Math.max(scale, 0.9);
           const label = node.url ? node.url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] : node.name;
           labels.current.push({
@@ -290,8 +325,9 @@ export function GraphView({
       const on = lit(s) && lit(t);
       const a = hot ? 1 : on ? 0.55 : 0.07;
       if (LINEAGE.has(l.type)) return alpha(l.type === "DERIVED_FROM" ? pal.agent : pal.accent, a);
-      if (l.type === "SUPPORTS") return alpha(pal.ok, a * 0.6);
-      if (l.type === "CONTRADICTS") return alpha(pal.bad, a * 0.8);
+      // Support lines are context, not the story: barely there unless the belief is in focus.
+      if (l.type === "SUPPORTS") return alpha(pal.ok, hot ? 0.8 : highlight && on ? 0.35 : 0.1);
+      if (l.type === "CONTRADICTS") return alpha(pal.bad, hot ? 0.9 : highlight && on ? 0.45 : 0.16);
       return alpha(pal.faint, a * 0.5);
     },
     [pal, highlight, lit],
@@ -337,6 +373,14 @@ export function GraphView({
     return `${s}>${t}`;
   };
 
+  // The canvas can change size after the first fit (mobile layout, panels opening): re-frame the whole graph.
+  useEffect(() => {
+    if (!fitted.current || highlight) return;
+    const t = window.setTimeout(() => fg.current?.zoomToFit(400, 60), 120);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size.w, size.h]);
+
   // Frame whatever the agent (or the user) is looking at.
   useEffect(() => {
     const f = fg.current;
@@ -356,8 +400,19 @@ export function GraphView({
           nodeId="id"
           backgroundColor="rgba(0,0,0,0)"
           nodeCanvasObject={drawNode}
-          onRenderFramePre={() => {
+          onRenderFramePre={(ctx, scale) => {
             labels.current = [];
+            if (!pal) return;
+            let top = Infinity;
+            data.nodes.forEach((n) => n.y != null && (top = Math.min(top, n.y)));
+            if (!Number.isFinite(top)) return;
+            ctx.save();
+            ctx.font = `500 ${10 / Math.max(scale, 0.6)}px ${pal.mono}`;
+            ctx.fillStyle = pal.faint;
+            ctx.textAlign = "center";
+            ctx.letterSpacing = "1.5px";
+            COL_LABELS.forEach(([x, t], i) => (i !== 1 || scale > 0.8) && ctx.fillText(t, x, top - 46 / Math.max(scale, 0.6)));
+            ctx.restore();
           }}
           onRenderFramePost={drawLabels}
           nodePointerAreaPaint={(node, color, ctx) => {
@@ -381,11 +436,12 @@ export function GraphView({
           onBackgroundClick={() => onSelect(null)}
           onNodeHover={(n) => setHover(n?.id ?? null)}
           cooldownTicks={180}
+          warmupTicks={80}
           d3VelocityDecay={0.32}
           onEngineStop={() => {
             if (!fitted.current && !highlight) {
               fitted.current = true;
-              fg.current?.zoomToFit(600, 110);
+              fg.current?.zoomToFit(600, size.w < 600 ? 40 : 110);
             } else if (highlight && highlight.nodes.size > 0) {
               // new nodes (the agent's notes) reheat the layout: re-frame what is in focus once it settles
               fg.current?.zoomToFit(500, 130, (n: N) => highlight.nodes.has(n.id));

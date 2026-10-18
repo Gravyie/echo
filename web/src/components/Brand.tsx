@@ -34,7 +34,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   const [dark, setDark] = useState(false);
   useEffect(() => {
     try {
-      setDark(localStorage.getItem("echo.theme") === "dark");
+      setDark(localStorage.getItem("echo.theme") === "dark" || document.documentElement.dataset.theme === "dark");
     } catch {}
   }, []);
   const flip = () => {

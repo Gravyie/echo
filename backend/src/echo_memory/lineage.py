@@ -50,7 +50,7 @@ _NET_RES = [
 ]
 # Precise figures rarely arise independently: 99.982%, $4.71M, 1,284 hospitals, 3.6x.
 _SPECIFIC = re.compile(
-    r"(?<![\w.])(\$?\d{1,3}(?:,\d{3})+(?:\.\d+)?|\$?\d+\.\d{2,}%?|\$?\d+\.\d+\s?(?:x|ms|%|M|B|K|GB|TB)\b|\d{3,}\s?(?:ms|hospitals|clinics|customers|teams|deployments|endpoints|patients))",
+    r"(?<![\w.])(\$?\d{1,3}(?:,\d{3})+(?:\.\d+)?|\$?\d+\.\d{2,}%?|\$?\d+\.\d+\s?(?:%|(?:x|ms|M|B|K|GB|TB)\b)|\d{3,}\s?(?:ms|hospitals|clinics|customers|teams|deployments|endpoints|patients))",
 )
 _YEAR = re.compile(r"^(19|20)\d{2}$")
 _WORD = re.compile(r"[a-z0-9']+")

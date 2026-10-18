@@ -60,6 +60,7 @@ const TOUR: TourStep[] = [
 import { BeliefInspector, SourceInspector } from "./Inspector";
 import { Overview } from "./Overview";
 import { CypherConsole, IngestPanel } from "./Tools";
+import { EXAMPLES, loadExamples } from "@/lib/examples";
 
 type Sel = { kind: "belief" | "source"; id: string } | null;
 type LeftTab = "ask" | "ingest" | "cypher";
@@ -108,14 +109,6 @@ export default function Studio() {
   const [view, setView] = useState<"map" | "lineage">("map");
   const [tourOpen, setTourOpen] = useState(false);
 
-  // The theme choice belongs to the studio; the landing page is always paper.
-  useEffect(() => {
-    const t = storageGet("echo.theme");
-    if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
-    return () => {
-      delete document.documentElement.dataset.theme;
-    };
-  }, []);
   // The lineage view stays on the last belief opened, even while a source is inspected (e.g. right after a retraction).
   const [lineageId, setLineageId] = useState<string | null>(null);
   const [lineage, setLineage] = useState<Report | null>(null);
@@ -372,7 +365,7 @@ export default function Studio() {
       if (!restore) mark("retracted");
       const moved = r.rescored.filter((x) => x.before.status !== x.after.status).length;
       flash(
-        `${restore ? "Restored" : "Retracted"} ${titles.get(id) ?? id}. ${r.rescored.length} beliefs rescored in ${r.ms} ms, ${moved} changed status.`,
+        `${restore ? "Restored" : "Retracted"} ${titles.get(id) ?? id}. ${r.rescored.length} ${r.rescored.length === 1 ? "belief" : "beliefs"} rescored in ${r.ms} ms, ${moved} changed status.`,
       );
     } catch (e) {
       flash(`Could not update source: ${(e as Error).message}`);
@@ -392,6 +385,31 @@ export default function Studio() {
     await refresh(ws);
     setBusy(false);
     flash("Workspace reset to the original scenario.");
+  };
+
+  // After the example pages land: open the belief they corroborate, straight in the lineage view.
+  const afterExamples = async () => {
+    if (!ws) return;
+    await refresh(ws);
+    const bs = await api.beliefs(ws);
+    const top = [...bs].sort((a, b) => (b.sources ?? 0) - (a.sources ?? 0))[0];
+    if (top) {
+      setSel({ kind: "belief", id: top.id });
+      setView("lineage");
+      flash(`“${top.statement}” — ${top.sources} sources, ${top.origins} independent ${top.origins === 1 ? "origin" : "origins"}. The news site copied the first lab.`);
+    }
+  };
+  const [exStep, setExStep] = useState<number | null>(null);
+  const runExamples = async () => {
+    if (!ws) return;
+    try {
+      await loadExamples(ws, setExStep);
+      await afterExamples();
+    } catch (e) {
+      flash(`Could not load the examples: ${(e as Error).message}`);
+    } finally {
+      setExStep(null);
+    }
   };
 
   const scen = info?.scenario ?? scenarios.find((s) => s.id === scenario) ?? null;
@@ -594,8 +612,11 @@ export default function Studio() {
                 ws={ws}
                 onDone={(r) => {
                   refresh(ws);
-                  flash(`Ingested with ${r.edges.length} lineage edges and ${r.claims.length} claims.`);
+                  flash(
+                    `Added with ${r.edges.length} lineage ${r.edges.length === 1 ? "edge" : "edges"} and ${r.claims.length} ${r.claims.length === 1 ? "claim" : "claims"}.`,
+                  );
                 }}
+                onExamples={afterExamples}
               />
             )}
             {left === "cypher" && ws && <CypherConsole ws={ws} />}
@@ -665,6 +686,30 @@ export default function Studio() {
               </button>
             )}
           </div>
+
+          {!loading && graph.nodes.length === 0 && (
+            <div className="absolute inset-0 z-10 grid place-items-center p-6">
+              <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6 text-center shadow-card">
+                <span className="eyebrow">Your memory</span>
+                <h3 className="display mt-3 text-[26px] leading-tight">This memory is empty.</h3>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
+                  Add pages and Echo links each one back to where it came from. Start with three example pages, or add your own.
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  <button
+                    onClick={runExamples}
+                    disabled={exStep !== null}
+                    className="rounded-md bg-text py-2.5 text-[13px] font-medium text-bg active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {exStep !== null ? `Reading ${EXAMPLES[exStep].author}… (${exStep + 1}/${EXAMPLES.length})` : "Load example pages"}
+                  </button>
+                  <button onClick={() => setLeft("ingest")} className="rounded-md border border-line-strong py-2.5 text-[13px] text-text hover:bg-surface-2">
+                    Add your own page
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {view === "map" && <Legend showOwners={showOwners} setShowOwners={setShowOwners} showAgent={showAgent} setShowAgent={setShowAgent} />}
 
@@ -757,7 +802,7 @@ function Legend({
     </button>
   );
   return (
-    <div className="pointer-events-none absolute right-3 top-3 z-10 hidden max-w-[calc(100%-240px)] justify-end xl:flex">
+    <div className="pointer-events-none absolute right-3 top-3 z-10 hidden max-w-[calc(100%-330px)] justify-end xl:flex">
       <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5 rounded-lg border border-line bg-surface/90 px-3 py-1.5 text-[11px] text-muted shadow-card backdrop-blur">
         {item(<span className="size-2.5 rounded-full bg-accent" />, "Origin")}
         {item(<span className="size-2.5 rounded-full border border-muted" />, "Source")}
