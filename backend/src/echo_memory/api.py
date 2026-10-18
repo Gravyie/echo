@@ -138,9 +138,16 @@ class _ScopedMCP:
 app.mount("/mcp", _ScopedMCP(mcp_app))
 
 
+MISSING = "memory not found: it may have expired, or the server restarted"
+
+
 def mem(ws: str) -> EchoMemory:
     if not valid_workspace(ws) or ws.startswith("tpl-"):
-        raise HTTPException(404, "unknown workspace")
+        raise HTTPException(404, MISSING)
+    # A graph that no longer exists (expired, deleted, or wiped by a restart of the free host) is a 404,
+    # not a database error; the studio recovers from it.
+    if not client().connection.exists(graph_name(ws)):
+        raise HTTPException(404, MISSING)
     return EchoMemory(ws)
 
 
@@ -210,8 +217,6 @@ def create_workspace(body: NewWorkspace) -> dict:
 def workspace(ws: str) -> dict:
     m = mem(ws)
     meta = _meta(ws)
-    if not meta and ws not in list_workspaces():
-        raise HTTPException(404, "unknown workspace")
     scen = meta.get("scenario")
     return {"workspace": ws, "meta": meta, "scenario": scenarios.info(scen) if scen in scenarios.SCENARIOS else None,
             "stats": m.stats()}
@@ -219,6 +224,7 @@ def workspace(ws: str) -> dict:
 
 @app.post("/api/w/{ws}/reset")
 def reset(ws: str) -> dict:
+    mem(ws)
     meta = _meta(ws)
     scen = meta.get("scenario")
     if scen in scenarios.SCENARIOS:
@@ -352,8 +358,9 @@ class CypherBody(BaseModel):
 
 @app.post("/api/w/{ws}/cypher")
 def cypher(ws: str, body: CypherBody) -> dict:
+    m = mem(ws)  # a missing memory is a 404, not a query error
     try:
-        return mem(ws).cypher(body.cypher)
+        return m.cypher(body.cypher)
     except Exception as e:
         raise HTTPException(400, str(e)[:400]) from e
 

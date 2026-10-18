@@ -255,6 +255,35 @@ export default function Studio() {
     };
   }, [scenario, refresh, mark, memNonce]);
 
+  // A memory can vanish under us: the free host restarts with an empty database after sleeping, and
+  // demo copies expire. When any request reports it missing, start a fresh copy and say why.
+  const recovering = useRef(false);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const gone = (e as CustomEvent<string>).detail;
+      if (recovering.current || !ws || gone !== ws) return;
+      recovering.current = true;
+      try {
+        localStorage.removeItem(`echo.ws.${scenario}`);
+      } catch {}
+      if (scenario === BLANK) {
+        const rest = getMemories().filter((m) => m.ws !== gone);
+        setMemories(rest);
+        setMems(rest);
+      }
+      flash(
+        scenario === BLANK
+          ? "This memory is no longer on the server (the free host restarts when idle). Starting a new one; export memories you want to keep."
+          : "The server restarted while idle, so your copy of this scenario was reset. Everything works again.",
+      );
+      setMemNonce((n) => n + 1);
+      window.setTimeout(() => (recovering.current = false), 4000);
+    };
+    window.addEventListener("echo:memory-missing", on);
+    return () => window.removeEventListener("echo:memory-missing", on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ws, scenario]);
+
   // Own memories: switch, create, forget.
   const openMemory = (w: string) => {
     setActiveMemory(w);

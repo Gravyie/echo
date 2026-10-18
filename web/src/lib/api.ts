@@ -147,6 +147,13 @@ export type AgentEvent =
   | { type: "answer"; text: string; beliefs: string[]; episode: string; note: string | null; seconds: number }
   | { type: "error"; text: string };
 
+/** The studio listens for this and recovers (fresh copy of the scenario) instead of showing raw errors. */
+function memoryMissing(path: string, msg: string) {
+  const m = path.match(/^\/api\/w\/([^/]+)/);
+  if (m && typeof window !== "undefined" && /memory not found|unknown workspace/i.test(msg))
+    window.dispatchEvent(new CustomEvent("echo:memory-missing", { detail: m[1] }));
+}
+
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(`${API}${path}`, {
     ...init,
@@ -158,6 +165,7 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
       const b = await r.json();
       msg = b.detail ?? msg;
     } catch {}
+    if (r.status === 404) memoryMissing(path, msg);
     throw new Error(msg);
   }
   return r.json() as Promise<T>;
@@ -215,6 +223,7 @@ export async function ask(ws: string, question: string, mode: "echo" | "plain", 
     body: JSON.stringify({ question, mode }),
     signal,
   });
+  if (r.status === 404) memoryMissing(`/api/w/${ws}`, "memory not found");
   if (!r.ok || !r.body) throw new Error(`ask failed: ${r.status}`);
   const reader = r.body.getReader();
   const dec = new TextDecoder();
