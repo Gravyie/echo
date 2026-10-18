@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowCounterClockwise, ChatCircleText, Code, Graph as GraphIcon, Plus, TreeStructure, WarningCircle } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, ChatCircleText, Code, Graph as GraphIcon, Plus, Question, TreeStructure, WarningCircle } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mark, ThemeToggle } from "../Brand";
@@ -23,6 +23,40 @@ import { AskPanel, applyEvent, type Step, type Turn } from "./AskPanel";
 import { GraphView, type Highlight } from "./GraphView";
 import { Guide, GuidePill, type GuideKey, type GuideStep } from "./Guide";
 import { LineageView } from "./LineageView";
+import { Tour, type TourStep } from "./Tour";
+
+const TOUR: TourStep[] = [
+  {
+    target: "scenarios",
+    title: "Pick a story",
+    body: "Two prepared memories: a vendor claim planted across five sites, and a citation loop with no attacker. “Your memory” starts empty for your own pages.",
+  },
+  {
+    target: "agent",
+    title: "The research agent",
+    body: "Ask anything. The same agent answers twice: with Echo, and with a plain memory that counts mentions. Each tool call streams in with the Cypher it ran.",
+  },
+  {
+    target: "canvas",
+    title: "Memory as a graph",
+    body: "Sources are circles, beliefs are squares coloured by verdict, and the lines are copies and citations. Origins glow. Click anything to inspect it.",
+  },
+  {
+    target: "views",
+    title: "Map or Lineage",
+    body: "Lineage draws one belief's proof left to right: the origins, the copies that carried the claim, and the belief, with the evidence on every edge.",
+  },
+  {
+    target: "beliefs",
+    title: "Beliefs and verdicts",
+    body: "Each belief shows sources → independent origins, its verdict, and what a plain memory would say. Load-bearing ranks origins with PageRank; Rings finds coordinated sites.",
+  },
+  {
+    target: "guide",
+    title: "Start here",
+    body: "The guide walks you through the whole story in five steps, with a button that does each one for you.",
+  },
+];
 import { BeliefInspector, SourceInspector } from "./Inspector";
 import { Overview } from "./Overview";
 import { CypherConsole, IngestPanel } from "./Tools";
@@ -72,6 +106,7 @@ export default function Studio() {
   const [showAgent, setShowAgent] = useState(true);
   const turnId = useRef(0);
   const [view, setView] = useState<"map" | "lineage">("map");
+  const [tourOpen, setTourOpen] = useState(false);
   // The lineage view stays on the last belief opened, even while a source is inspected (e.g. right after a retraction).
   const [lineageId, setLineageId] = useState<string | null>(null);
   const [lineage, setLineage] = useState<Report | null>(null);
@@ -94,6 +129,17 @@ export default function Studio() {
       return n;
     });
   }, []);
+  useEffect(() => {
+    if (!loading && !fatal && storageGet("echo.tour.done") !== "1") {
+      const t = window.setTimeout(() => setTourOpen(true), 600);
+      return () => window.clearTimeout(t);
+    }
+  }, [loading, fatal]);
+  const closeTour = useCallback(() => {
+    setTourOpen(false);
+    storageSet("echo.tour.done", "1");
+  }, []);
+
   const toggleGuide = (open: boolean) => {
     setGuideOpen(open);
     storageSet("echo.guide.hidden", open ? "0" : "1");
@@ -438,13 +484,14 @@ export default function Studio() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden">
+      <Tour steps={TOUR} open={tourOpen} onClose={closeTour} />
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Mark size={20} />
+          <Mark size={24} />
           <span className="display text-[21px] leading-none">Echo</span>
         </Link>
         <span className="text-line-strong">/</span>
-        <div className="scrollbar-thin flex gap-0.5 overflow-x-auto rounded-lg border border-line bg-bg p-0.5">
+        <div data-tour="scenarios" className="scrollbar-thin flex gap-0.5 overflow-x-auto rounded-lg border border-line bg-bg p-0.5">
           {scenarioTabs.map((s) => (
             <button
               key={s.id}
@@ -468,7 +515,13 @@ export default function Studio() {
           )}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5 2xl:ml-3">
-          <span className="hidden lg:block">
+          <button
+            onClick={() => setTourOpen(true)}
+            className="hidden items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] text-muted hover:text-text md:flex"
+          >
+            <Question size={13} /> Tour
+          </button>
+          <span className="hidden lg:block" data-tour="guide">
             <GuidePill count={doneCount} total={guideSteps.length} onClick={() => toggleGuide(!guideOpen)} />
           </span>
           {health && (
@@ -494,7 +547,7 @@ export default function Studio() {
           wide ? "lg:grid-cols-[380px_minmax(0,1fr)]" : "lg:grid-cols-[380px_minmax(0,1fr)_370px]"
         }`}>
         {/* left: agent + tools */}
-        <aside className="order-2 flex min-h-[70dvh] flex-col border-line bg-surface lg:order-1 lg:min-h-0 lg:border-r">
+        <aside data-tour="agent" className="order-2 flex min-h-[70dvh] flex-col border-line bg-surface lg:order-1 lg:min-h-0 lg:border-r">
           <div className="flex shrink-0 gap-1 border-b border-line px-3 pt-3">
             {(
               [
@@ -524,7 +577,7 @@ export default function Studio() {
                 titles={titles}
                 onCite={(id) => setSel(id.startsWith("b:") ? { kind: "belief", id } : { kind: "source", id })}
                 onHighlight={highlightStep}
-                intro={guideOpen ? guide : null}
+                intro={guideOpen ? <div data-tour="guide">{guide}</div> : null}
               />
             )}
             {left === "ingest" && ws && (
@@ -541,7 +594,7 @@ export default function Studio() {
         </aside>
 
         {/* center: graph */}
-        <main className="relative order-1 h-[62dvh] min-h-[380px] overflow-hidden bg-bg lg:order-2 lg:h-auto">
+        <main data-tour="canvas" className="relative order-1 h-[62dvh] min-h-[380px] overflow-hidden bg-bg lg:order-2 lg:h-auto">
           {view === "map" && <div className="dots absolute inset-0 opacity-70" />}
           {loading ? (
             <div className="absolute inset-0 grid place-items-center">
@@ -573,7 +626,7 @@ export default function Studio() {
           )}
 
           <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
-            <div className="flex rounded-lg border border-line bg-surface p-0.5 shadow-card">
+            <div data-tour="views" className="flex rounded-lg border border-line bg-surface p-0.5 shadow-card">
               {(
                 [
                   ["map", "Map", GraphIcon],
@@ -628,7 +681,7 @@ export default function Studio() {
         </main>
 
         {/* right: inspector / overview */}
-        <aside className={`order-3 min-h-[60dvh] border-line bg-surface lg:min-h-0 lg:border-l ${wide ? "lg:hidden" : ""}`}>
+        <aside data-tour="beliefs" className={`order-3 min-h-[60dvh] border-line bg-surface lg:min-h-0 lg:border-l ${wide ? "lg:hidden" : ""}`}>
           <div className="scrollbar-thin h-full overflow-y-auto">
             {sel?.kind === "belief" && report ? (
               <BeliefInspector report={report} onSelectSource={(id) => setSel({ kind: "source", id })} onBack={() => setSel(null)} />

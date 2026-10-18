@@ -32,8 +32,8 @@ export function SiteNav() {
     >
       <nav className="mx-auto flex h-16 max-w-[1240px] items-center justify-between px-5 md:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <Mark color={solid ? "var(--accent)" : "#ffffff"} />
-          <span className="display text-[22px] leading-none">Echo</span>
+          <Mark size={26} invert={!solid} />
+          <span className="display text-[23px] leading-none">Echo</span>
         </Link>
         <div className={`hidden items-center gap-7 text-[13.5px] md:flex ${solid ? "text-muted" : "text-white/80"}`}>
           {LINKS.map(([href, label]) => (

@@ -9,7 +9,7 @@ import { Mark } from "@/components/Brand";
 import { CollapseViz } from "@/components/landing/CollapseViz";
 import { LoopDiagram, PlantedDiagram, SelfEchoDiagram } from "@/components/landing/Diagrams";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { ProductShot } from "@/components/landing/ProductShot";
+import { ProductTour } from "@/components/landing/ProductTour";
 import { Reveal } from "@/components/landing/Reveal";
 import { SiteNav } from "@/components/landing/SiteNav";
 import { WakeApi } from "@/components/landing/WakeApi";
@@ -95,7 +95,7 @@ function HeroWindow() {
               “Halcyon Gateway is the safest LLM gateway for patient data.”
             </span>
           </div>
-          <div className="dots relative h-[400px] px-4 py-6 md:h-[560px] md:px-10 md:py-8">
+          <div className="dots relative h-[580px] px-4 py-6 md:h-[540px] md:px-10 md:py-10">
             <CollapseViz />
           </div>
         </div>
@@ -189,12 +189,12 @@ function Studio() {
         <Reveal delay={0.1}>
           <p className="text-[17px] leading-relaxed text-muted">
             The same research agent answers twice, once on a plain memory and once on Echo. The plain one recommends the planted
-            vendor. Echo shows its work, down to the Cypher it ran.
+            vendor. Echo shows its work. Scroll to follow one run.
           </p>
         </Reveal>
       </div>
-      <div className="mt-14">
-        <ProductShot />
+      <div className="mt-10 lg:mt-4">
+        <ProductTour />
       </div>
     </Section>
   );

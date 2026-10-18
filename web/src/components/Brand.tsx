@@ -4,13 +4,31 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "@phosphor-icons/react";
 
-/** Echo's mark: one solid origin with the rings it sends out. */
-export function Mark({ size = 22, color = "var(--accent)" }: { size?: number; color?: string }) {
+const FAN = [
+  ["M6.5 6.5 C 13 6.5, 14.5 16, 20 16", 0.32],
+  ["M6.5 11.25 C 12.5 11.25, 14 16, 20 16", 0.58],
+  ["M6.5 16 L 20 16", 0.95],
+  ["M6.5 20.75 C 12.5 20.75, 14 16, 20 16", 0.58],
+  ["M6.5 25.5 C 13 25.5, 14.5 16, 20 16", 0.32],
+] as const;
+
+/**
+ * Echo's mark: five sources fanning into one origin.
+ * `tile` sets it on an ink (or paper, when inverted) rounded square, like the favicon.
+ */
+export function Mark({ size = 22, tile = true, invert = false }: { size?: number; tile?: boolean; invert?: boolean }) {
+  // Follows the theme: an ink tile on paper, a paper tile on ink. `invert` forces paper (for use over imagery).
+  const bg = invert ? "#F4F3EF" : "var(--text)";
+  const fg = tile ? (invert ? "#141413" : "var(--bg)") : "currentColor";
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <rect x="9.2" y="9.2" width="5.6" height="5.6" fill={color} />
-      <circle cx="12" cy="12" r="7" fill="none" stroke={color} strokeOpacity="0.6" strokeWidth="1.3" />
-      <circle cx="12" cy="12" r="10.6" fill="none" stroke={color} strokeOpacity="0.28" strokeWidth="1.1" />
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="shrink-0">
+      {tile && <rect width="32" height="32" rx="7.5" fill={bg} />}
+      <g fill="none" stroke={fg} strokeWidth="1.8" strokeLinecap="round">
+        {FAN.map(([d, o]) => (
+          <path key={d} d={d} opacity={o} />
+        ))}
+      </g>
+      <circle cx="22.6" cy="16" r="3.4" fill="#E0501A" />
     </svg>
   );
 }
@@ -18,8 +36,8 @@ export function Mark({ size = 22, color = "var(--accent)" }: { size?: number; co
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <Link href="/" className={`flex items-center gap-2 ${className}`}>
-      <Mark />
-      <span className="display text-[22px] leading-none">Echo</span>
+      <Mark size={24} />
+      <span className="display text-[23px] leading-none">Echo</span>
     </Link>
   );
 }
