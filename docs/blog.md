@@ -1,6 +1,6 @@
 # Five sources, one origin: teaching agent memory to count independence with FalkorDB
 
-*Built for Graph Hacks 2026 (WeMakeDevs × FalkorDB). Live demo: [echo-memory-rho.vercel.app](https://echo-memory-rho.vercel.app). Code: [github.com/Gravyie/echo](https://github.com/Gravyie/echo).*
+*Built for Graph Hacks 2026 (WeMakeDevs × FalkorDB). Live demo: [meetecho.vercel.app](https://meetecho.vercel.app). Code: [github.com/Gravyie/echo](https://github.com/Gravyie/echo).*
 
 An agent researching LLM gateways for a hospital reads five pages that call one vendor "the safest choice for patient data". Five sources agree, so it stores the claim as well supported, and from then on it recommends that vendor in every session.
 

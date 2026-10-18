@@ -4,7 +4,7 @@
 
 Echo is a memory layer for AI agents, built on [FalkorDB](https://falkordb.com). It links every belief an agent stores to where it came from, all the way back to its origin. Before the agent trusts a belief, Echo counts how many *independent origins* support it, not how many times it was seen.
 
-**Live:** [echo-memory-rho.vercel.app](https://echo-memory-rho.vercel.app) · **Studio:** [/studio](https://echo-memory-rho.vercel.app/studio) · **API + MCP:** [echo-memory.onrender.com](https://echo-memory.onrender.com/api/health) (free tier: the first request after a quiet spell takes about a minute while it wakes)
+**Live:** [meetecho.vercel.app](https://meetecho.vercel.app) · **Studio:** [/studio](https://meetecho.vercel.app/studio) · **API + MCP:** [echo-memory.onrender.com](https://echo-memory.onrender.com/api/health) (free tier: the first request after a quiet spell takes about a minute while it wakes)
 
 Built for **Graph Hacks 2026** (WeMakeDevs × FalkorDB). Tracks: **02 Agent Memory and Coordination** (core) and **01 Agents That Act on Connected Data** (the agent's tools are graph queries and graph algorithms).
 
