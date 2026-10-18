@@ -20,7 +20,7 @@ const SOURCES = [
 ];
 
 type Phase = 0 | 1 | 2 | 3; // 0 mentions, 1 trace, 2 collapse, 3 fade-out (reset)
-const TIMING: Record<Phase, number> = { 0: 3000, 1: 3800, 2: 4600, 3: 700 };
+const TIMING: Record<Phase, number> = { 0: 3000, 1: 3800, 2: 5200, 3: 700 };
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 // Two stage geometries: wide for desktop, tall for phones.
@@ -92,6 +92,9 @@ export function CollapseViz() {
   const hidden = phase === 3;
   const ox = g.origin.x;
   const oy = g.origin.y;
+  // The finale sits dead centre: the count above, the origin card, the verdict below.
+  const fx = (g.w - g.origin.w) / 2;
+  const fy = (g.h - g.origin.h) / 2 + 26;
 
   return (
     <div ref={box} className="relative h-full w-full select-none overflow-hidden">
@@ -102,30 +105,33 @@ export function CollapseViz() {
         transition={{ duration: 0.6, ease: EASE }}
       >
         {/* the count */}
-        <div className="absolute top-0" style={{ left: g.rowX }} aria-live="polite">
+        <motion.div
+          className="absolute top-0"
+          style={{ left: g.rowX }}
+          aria-live="polite"
+          initial={false}
+          animate={{ opacity: collapsed ? 0 : 1, y: collapsed ? -8 : 0 }}
+          transition={{ duration: 0.5, ease: EASE }}
+        >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={collapsed ? "echo" : "plain"}
+              key={traced ? "trace" : "plain"}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.45, ease: EASE }}
               className="flex items-end gap-4"
             >
-              <span className={`display text-[76px] leading-[0.8] tabular-nums ${collapsed ? "text-accent" : "text-text"}`}>
-                {collapsed ? 1 : shown}
-              </span>
+              <span className="display text-[76px] leading-[0.8] tabular-nums text-text">{collapsed ? 5 : shown}</span>
               <span className="pb-1">
                 <span className="block font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
-                  {collapsed ? "Echo counts origins" : traced ? "Echo traces each one back" : "Plain memory counts mentions"}
+                  {traced || collapsed ? "Echo traces each one back" : "Plain memory counts mentions"}
                 </span>
-                <span className="mt-1 block text-[15px] text-muted">
-                  {collapsed ? "independent origin" : shown === 1 ? "source says Halcyon is safest" : "sources say Halcyon is safest"}
-                </span>
+                <span className="mt-1 block text-[15px] text-muted">{shown === 1 ? "source says Halcyon is safest" : "sources say Halcyon is safest"}</span>
               </span>
             </motion.div>
           </AnimatePresence>
-        </div>
+        </motion.div>
 
         {/* lineage curves */}
         <svg className="absolute inset-0 overflow-visible" width={g.w} height={g.h} aria-hidden>
@@ -173,7 +179,7 @@ export function CollapseViz() {
               initial={false}
               animate={
                 collapsed
-                  ? { x: ox - g.rowX + 10, y: oy + 30 - y, scale: 0.86, opacity: 0 }
+                  ? { x: fx - g.rowX + (g.origin.w - g.rowW) / 2, y: fy + (g.origin.h - g.rowH) / 2 - y, scale: 0.8, opacity: 0 }
                   : { x: 0, y: visible ? 0 : 8, scale: 1, opacity: visible ? 1 : 0 }
               }
               transition={{ duration: collapsed ? 0.9 : 0.55, delay: collapsed ? i * 0.07 : 0, ease: EASE }}
@@ -206,13 +212,35 @@ export function CollapseViz() {
           className="absolute"
           style={{ left: ox, top: oy, width: g.origin.w }}
           initial={false}
-          animate={{ opacity: phase === 0 && shown < 5 ? 0.35 : 1, scale: collapsed ? 1.04 : 1 }}
-          transition={{ duration: 0.7, ease: EASE }}
+          animate={{
+            opacity: phase === 0 && shown < 5 ? 0.35 : 1,
+            x: collapsed ? fx - ox : 0,
+            y: collapsed ? fy - oy : 0,
+            scale: collapsed ? 1.06 : 1,
+          }}
+          transition={{ duration: 1.0, ease: EASE }}
         >
+          <AnimatePresence>
+            {collapsed && (
+              <motion.div
+                className="absolute inset-x-0 -top-[112px] flex items-end justify-center gap-4"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: 0.75, duration: 0.6, ease: EASE }}
+              >
+                <span className="display text-[104px] leading-[0.78] text-accent">1</span>
+                <span className="pb-1.5">
+                  <span className="block font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">Echo counts origins</span>
+                  <span className="mt-1 block text-[17px] text-text">independent origin</span>
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <motion.div
             aria-hidden
             className="absolute -inset-12 -z-10 rounded-[40px] bg-[radial-gradient(closest-side,var(--accent),transparent)] blur-xl"
-            animate={{ opacity: collapsed ? 0.28 : traced ? 0.12 : 0 }}
+            animate={{ opacity: collapsed ? 0.34 : traced ? 0.12 : 0, scale: collapsed ? 1.15 : 1 }}
             transition={{ duration: 0.9, ease: EASE }}
           />
           <div className={`rounded-xl border bg-surface p-4 shadow-card transition-colors duration-500 ${phase >= 1 ? "border-accent" : "border-line"}`}>
@@ -229,11 +257,11 @@ export function CollapseViz() {
           <AnimatePresence>
             {collapsed && (
               <motion.div
-                className="mt-3.5 flex items-center gap-2.5"
+                className="mt-4 flex items-center justify-center gap-2.5"
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ delay: 0.55, duration: 0.5, ease: EASE }}
+                transition={{ delay: 1.0, duration: 0.5, ease: EASE }}
               >
                 <span className="rounded-full bg-bad/10 px-2.5 py-1 font-mono text-[10.5px] font-medium tracking-wider text-bad">DISPUTED</span>
                 <span className="font-mono text-[11.5px] text-muted">

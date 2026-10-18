@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GithubLogo } from "@phosphor-icons/react";
-import { Mark, ThemeToggle } from "@/components/Brand";
+import { Mark } from "@/components/Brand";
 import { REPO_URL } from "@/lib/site";
 
 const LINKS = [
@@ -31,8 +31,18 @@ export function SiteNav() {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-[1240px] items-center justify-between px-5 md:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <Mark size={26} invert={!solid} />
+        <Link
+          href="/"
+          aria-label="Echo, back to top"
+          onClick={(e) => {
+            // already on the landing page: glide back to the top instead of a no-op navigation
+            e.preventDefault();
+            window.history.replaceState(null, "", "/");
+            window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+          }}
+          className="flex items-center gap-2"
+        >
+          <Mark size={30} />
           <span className="display text-[23px] leading-none">Echo</span>
         </Link>
         <div className={`hidden items-center gap-7 text-[13.5px] md:flex ${solid ? "text-muted" : "text-white/80"}`}>
@@ -50,7 +60,6 @@ export function SiteNav() {
           >
             <GithubLogo size={18} />
           </a>
-          {solid && <ThemeToggle />}
           <Link
             href="/studio"
             className={`ml-2 rounded-md px-3.5 py-2 text-[13.5px] font-medium transition-[transform,background-color] active:scale-[0.98] ${

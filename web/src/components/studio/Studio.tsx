@@ -107,6 +107,15 @@ export default function Studio() {
   const turnId = useRef(0);
   const [view, setView] = useState<"map" | "lineage">("map");
   const [tourOpen, setTourOpen] = useState(false);
+
+  // The theme choice belongs to the studio; the landing page is always paper.
+  useEffect(() => {
+    const t = storageGet("echo.theme");
+    if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+    return () => {
+      delete document.documentElement.dataset.theme;
+    };
+  }, []);
   // The lineage view stays on the last belief opened, even while a source is inspected (e.g. right after a retraction).
   const [lineageId, setLineageId] = useState<string | null>(null);
   const [lineage, setLineage] = useState<Report | null>(null);
@@ -487,7 +496,7 @@ export default function Studio() {
       <Tour steps={TOUR} open={tourOpen} onClose={closeTour} />
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Mark size={24} />
+          <Mark size={28} />
           <span className="display text-[21px] leading-none">Echo</span>
         </Link>
         <span className="text-line-strong">/</span>

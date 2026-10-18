@@ -4,31 +4,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "@phosphor-icons/react";
 
-const FAN = [
-  ["M6.5 6.5 C 13 6.5, 14.5 16, 20 16", 0.32],
-  ["M6.5 11.25 C 12.5 11.25, 14 16, 20 16", 0.58],
-  ["M6.5 16 L 20 16", 0.95],
-  ["M6.5 20.75 C 12.5 20.75, 14 16, 20 16", 0.58],
-  ["M6.5 25.5 C 13 25.5, 14.5 16, 20 16", 0.32],
-] as const;
-
 /**
- * Echo's mark: five sources fanning into one origin.
- * `tile` sets it on an ink (or paper, when inverted) rounded square, like the favicon.
+ * Echo's mark: one solid origin and its repeats, each fainter than the last.
+ * Outlines take the current text colour, so it works on paper, on ink and over imagery.
  */
-export function Mark({ size = 22, tile = true, invert = false }: { size?: number; tile?: boolean; invert?: boolean }) {
-  // Follows the theme: an ink tile on paper, a paper tile on ink. `invert` forces paper (for use over imagery).
-  const bg = invert ? "#F4F3EF" : "var(--text)";
-  const fg = tile ? (invert ? "#141413" : "var(--bg)") : "currentColor";
+export function Mark({ size = 22, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="shrink-0">
-      {tile && <rect width="32" height="32" rx="7.5" fill={bg} />}
-      <g fill="none" stroke={fg} strokeWidth="1.8" strokeLinecap="round">
-        {FAN.map(([d, o]) => (
-          <path key={d} d={d} opacity={o} />
-        ))}
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className={`shrink-0 ${className}`}>
+      <g fill="none" stroke="currentColor" strokeWidth="1.7">
+        <circle cx="22.4" cy="16" r="6.4" opacity=".22" />
+        <circle cx="18" cy="16" r="6.4" opacity=".45" />
+        <circle cx="13.6" cy="16" r="6.4" opacity=".75" />
       </g>
-      <circle cx="22.6" cy="16" r="3.4" fill="#E0501A" />
+      <circle cx="9.2" cy="16" r="6.4" fill="#E0501A" />
     </svg>
   );
 }
@@ -36,7 +24,7 @@ export function Mark({ size = 22, tile = true, invert = false }: { size?: number
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <Link href="/" className={`flex items-center gap-2 ${className}`}>
-      <Mark size={24} />
+      <Mark size={26} />
       <span className="display text-[23px] leading-none">Echo</span>
     </Link>
   );
@@ -44,7 +32,11 @@ export function Wordmark({ className = "" }: { className?: string }) {
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const [dark, setDark] = useState(false);
-  useEffect(() => setDark(document.documentElement.dataset.theme === "dark"), []);
+  useEffect(() => {
+    try {
+      setDark(localStorage.getItem("echo.theme") === "dark");
+    } catch {}
+  }, []);
   const flip = () => {
     const next = !dark;
     setDark(next);

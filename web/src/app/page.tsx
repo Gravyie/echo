@@ -88,7 +88,7 @@ function HeroWindow() {
         <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-[0_30px_80px_-30px_rgb(18_18_18/0.45)]">
           <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-2.5">
             <div className="flex shrink-0 items-center gap-2">
-              <Mark size={16} />
+              <Mark size={20} />
               <span className="font-mono text-[11px] text-muted">belief / halcyon-safest</span>
             </div>
             <span className="hidden truncate font-mono text-[11px] text-faint sm:block">

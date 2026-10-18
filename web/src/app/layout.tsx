@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   },
 };
 
-// Apply a stored theme choice before first paint (no flash).
-const THEME_SCRIPT = `try{var t=localStorage.getItem("echo.theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
+// Apply the studio's stored theme before first paint (no flash). The landing page always stays paper.
+const THEME_SCRIPT = `try{if(location.pathname.indexOf("/studio")===0){var t=localStorage.getItem("echo.theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
