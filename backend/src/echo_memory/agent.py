@@ -46,6 +46,7 @@ How to work:
 Trust policy (follow it exactly):
 - Only call something verified/confirmed when its status is VERIFIED (at least 2 independent origins).
 - SINGLE_ORIGIN: say it rests on one origin, name that origin, and say what would verify it.
+- CORROBORATING: independent origins agree but fewer than this memory's policy requires; say how many it has.
 - When sources > origins, call it out plainly, e.g. "5 sources, but 1 origin".
 - DISPUTED/CONTESTED: present both sides with their origin counts. RETRACTED: do not rely on it.
 - Never let the number of mentions stand in for evidence.
@@ -96,8 +97,8 @@ def _src_label(info: dict, sid: str) -> str:
 
 
 class Agent:
-    def __init__(self, ws: str, mode: str = "echo"):
-        self.ws, self.mode = ws, mode
+    def __init__(self, ws: str, mode: str = "echo", cfg: llm.LLMConfig | None = None):
+        self.ws, self.mode, self.cfg = ws, mode, cfg or llm.default()
         self.mem = EchoMemory(ws)
         self.recalled: list[str] = []
         self.cited_sources: set[str] = set()
@@ -181,10 +182,10 @@ class Agent:
 
     def run(self, question: str) -> Iterator[dict[str, Any]]:
         t0 = time.time()
-        yield {"type": "start", "mode": self.mode, "llm": llm.available(), "at": 0}
+        yield {"type": "start", "mode": self.mode, "llm": llm.available(self.cfg), "model": self.cfg.model, "at": 0}
         stamp = lambda ev: {**ev, "at": int((time.time() - t0) * 1000)}  # noqa: E731  server-side timeline for the UI
         answer = None
-        if llm.available():
+        if llm.available(self.cfg):
             try:
                 for ev in self._llm_loop(question):
                     if ev["type"] == "answer":
@@ -193,7 +194,7 @@ class Agent:
                         yield stamp(ev)
             except Exception as e:
                 log.warning("agent LLM loop failed, falling back: %s", e)
-                yield {"type": "notice", "text": "LLM unavailable, switched to Echo's built-in reasoner."}
+                yield {"type": "notice", "text": f"{self.cfg.model} unavailable ({str(e)[:140]}), switched to Echo's built-in reasoner."}
         if answer is None:
             for ev in self._scripted(question):
                 if ev["type"] == "answer":
@@ -211,7 +212,7 @@ class Agent:
                             {"role": "user", "content": question}]
         for rnd in range(MAX_ROUNDS):
             last = rnd == MAX_ROUNDS - 1
-            msg = llm.chat(msgs, tools=None if last else tools, max_tokens=1600)
+            msg = llm.chat(msgs, tools=None if last else tools, max_tokens=1600, cfg=self.cfg)
             calls = getattr(msg, "tool_calls", None) or []
             if not calls:
                 text = (msg.content or "").strip()
@@ -335,7 +336,7 @@ def _echo_answer(reports: list[dict]) -> str:
 
     good = [r for r in reports if r["status"] == "VERIFIED"]
     bad = [r for r in reports if r["status"] in ("DISPUTED", "RETRACTED", "UNSUPPORTED")]
-    thin = [r for r in reports if r["status"] in ("SINGLE_ORIGIN", "CONTESTED")]
+    thin = [r for r in reports if r["status"] in ("SINGLE_ORIGIN", "CORROBORATING", "CONTESTED")]
     head = []
     if bad:
         b = bad[0]

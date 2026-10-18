@@ -43,16 +43,16 @@ DOCUMENT (title: {title}):
 """
 
 
-def extract_claims(mem: EchoMemory, title: str, text: str) -> tuple[list[Claim], str]:
+def extract_claims(mem: EchoMemory, title: str, text: str, cfg: llm.LLMConfig | None = None) -> tuple[list[Claim], str]:
     """Returns (claims, method)."""
     existing = mem.recall(f"{title}\n{text[:1500]}", k=12)
-    if llm.available():
+    if llm.available(cfg):
         try:
             listing = "\n".join(f"- {b['id']}: {b['statement']}" for b in existing) or "(none yet)"
             msg = llm.chat(
                 [{"role": "user", "content": PROMPT.replace("{beliefs}", listing).replace("{title}", title)
                   .replace("{text}", text[:9000])}],
-                json_mode=True, temperature=0.0, max_tokens=1600,
+                json_mode=True, temperature=0.0, max_tokens=1600, cfg=cfg,
             )
             data = llm.parse_json(msg.content or "{}")
             known = {b["id"]: b for b in existing}

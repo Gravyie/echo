@@ -10,6 +10,7 @@ import { CollapseViz } from "@/components/landing/CollapseViz";
 import { LoopDiagram, PlantedDiagram, SelfEchoDiagram } from "@/components/landing/Diagrams";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { ProductTour } from "@/components/landing/ProductTour";
+import { Faq, ProductGrid, WorksWith } from "@/components/landing/ProductSections";
 import { Reveal } from "@/components/landing/Reveal";
 import { SiteNav } from "@/components/landing/SiteNav";
 import { WakeApi } from "@/components/landing/WakeApi";
@@ -68,9 +69,9 @@ function Hero() {
               Open the studio
               <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <a href="#how" className="rounded-md border border-white/30 px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-white/10">
-              How it works
-            </a>
+            <Link href="/docs#connect" className="rounded-md border border-white/30 px-5 py-3 text-[15px] font-medium text-white transition-colors hover:bg-white/10">
+              Connect your agent
+            </Link>
           </div>
         </Reveal>
       </div>
@@ -418,8 +419,11 @@ export default function Home() {
           </div>
         </Section>
         <Results />
+        <WorksWith />
+        <ProductGrid />
         <Falkor />
         <Mcp />
+        <Faq />
         <Closing />
       </main>
     </>

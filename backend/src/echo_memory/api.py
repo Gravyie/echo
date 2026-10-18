@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import json
 import logging
@@ -9,7 +10,7 @@ import secrets
 import time
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel, Field
@@ -23,8 +24,8 @@ from .db import client, graph_name, list_workspaces, valid_workspace, wait_for_d
 from .extract import extract_claims
 from .fetch import FetchError, fetch
 from .lineage import SourceDoc
-from .mcp_server import mcp
-from .memory import EchoMemory, slug
+from .mcp_server import current_workspace, mcp
+from .memory import Claim, EchoMemory, slug
 
 log = logging.getLogger("echo")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -32,6 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 TEMPLATE_VERSION = "3"
 MAX_VISITOR_WORKSPACES = 150
 VISITOR_TTL_S = 36 * 3600
+KEPT_TTL_S = 30 * 24 * 3600  # memories someone actually built (added sources, imported, renamed)
 
 
 def _template(scenario: str) -> str:
@@ -40,7 +42,14 @@ def _template(scenario: str) -> str:
 
 def _meta(ws: str) -> dict:
     return EchoMemory(ws).db.one("MATCH (m:Meta {id:'workspace'}) RETURN m.scenario AS scenario, m.title AS title, "
-                                 "m.version AS version, m.created AS created", ro=True) or {}
+                                 "m.version AS version, m.created AS created, m.keep AS keep, "
+                                 "coalesce(m.min_origins, $d) AS min_origins", {"d": settings().verify_min_origins}, ro=True) or {}
+
+
+def _keep(ws: str) -> None:
+    """Someone is building this memory: keep it for longer than a demo clone."""
+    with contextlib.suppress(Exception):
+        EchoMemory(ws).db.q("MATCH (m:Meta {id:'workspace'}) SET m.keep=true")
 
 
 def ensure_templates(force: bool = False) -> None:
@@ -76,11 +85,11 @@ def _gc_visitors() -> None:
     visitors = [w for w in list_workspaces() if "--" in w]
     aged = []
     for w in visitors:
-        created = _meta(w).get("created") or 0
-        aged.append((created, w))
+        m = _meta(w)
+        aged.append((m.get("created") or 0, w, bool(m.get("keep"))))
     aged.sort()
-    for i, (created, w) in enumerate(aged):
-        if now - created > VISITOR_TTL_S or len(aged) - i > MAX_VISITOR_WORKSPACES:
+    for i, (created, w, keep) in enumerate(aged):
+        if now - created > (KEPT_TTL_S if keep else VISITOR_TTL_S) or len(aged) - i > MAX_VISITOR_WORKSPACES:
             with contextlib.suppress(Exception):
                 client().select_graph(graph_name(w)).delete()
 
@@ -103,7 +112,30 @@ mcp_app = mcp.streamable_http_app(
     streamable_http_path="/", stateless_http=True,
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
 )
-app.mount("/mcp", mcp_app)
+
+
+class _ScopedMCP:
+    """/mcp/?workspace=<id> points every tool at that memory by default."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        token = None
+        if scope["type"] == "http":
+            from urllib.parse import parse_qs
+
+            ws = (parse_qs(scope.get("query_string", b"").decode()).get("workspace") or [""])[0]
+            if ws and valid_workspace(ws) and not ws.startswith("tpl-"):
+                token = current_workspace.set(ws)
+        try:
+            await self.inner(scope, receive, send)
+        finally:
+            if token is not None:
+                current_workspace.reset(token)
+
+
+app.mount("/mcp", _ScopedMCP(mcp_app))
 
 
 def mem(ws: str) -> EchoMemory:
@@ -120,6 +152,33 @@ def health() -> dict[str, Any]:
     client().connection.ping()
     return {"ok": True, "falkordb": True, "llm": llm.available(), "llm_model": settings().llm_model if llm.available() else None,
             "embeddings": embed.backend()}
+
+
+def llm_cfg(request: Request) -> llm.LLMConfig:
+    try:
+        return llm.from_headers(request.headers)
+    except llm.ConfigError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.get("/api/llm/providers")
+def llm_providers() -> dict:
+    d = llm.default()
+    return {"default": {"model": d.model, "available": llm.available(d), "label": "Echo default (free, via Groq)"},
+            "providers": [{"id": k, **{x: v[x] for x in ("label", "base", "keys", "models")}} for k, v in llm.PROVIDERS.items()]}
+
+
+@app.post("/api/llm/test")
+def llm_test(request: Request) -> dict:
+    return llm.test(llm_cfg(request))
+
+
+@app.post("/api/llm/models")
+def llm_models(request: Request) -> dict:
+    try:
+        return {"models": llm.list_models(llm_cfg(request))}
+    except llm.ConfigError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 @app.get("/api/scenarios")
@@ -167,6 +226,75 @@ def reset(ws: str) -> dict:
     else:
         mem(ws).reset()
     return {"ok": True}
+
+
+class WorkspaceSettings(BaseModel):
+    title: str | None = Field(default=None, max_length=80)
+    min_origins: int | None = Field(default=None, ge=1, le=5)
+
+
+@app.patch("/api/w/{ws}/settings")
+def update_settings(ws: str, body: WorkspaceSettings) -> dict:
+    m = mem(ws)
+    out: dict[str, Any] = {"ok": True}
+    if body.title is not None:
+        m.db.q("MERGE (x:Meta {id:'workspace'}) SET x.title=$t", {"t": body.title.strip() or "Untitled memory"})
+        _keep(ws)
+    if body.min_origins is not None:
+        t0 = time.time()
+        out["rescored"] = m.set_policy(body.min_origins)
+        out["ms"] = round((time.time() - t0) * 1000, 1)
+    return out
+
+
+@app.delete("/api/w/{ws}")
+def delete_workspace(ws: str) -> dict:
+    if "--" not in ws:
+        raise HTTPException(403, "shared workspaces can't be deleted")
+    mem(ws).drop()
+    return {"ok": True}
+
+
+@app.get("/api/w/{ws}/export")
+def export_workspace(ws: str) -> dict:
+    m = mem(ws)
+    return {**m.export(), "title": _meta(ws).get("title") or ws, "exported_at": int(time.time())}
+
+
+class ImportBody(BaseModel):
+    format: str = "echo-memory/1"
+    title: str = "Imported memory"
+    min_origins: int | None = None
+    sources: list[dict] = Field(max_length=400)
+
+
+@app.post("/api/workspaces/import")
+def import_workspace(body: ImportBody) -> dict:
+    """Rebuild a memory from an export: sources in their original order, with their claims, then retractions."""
+    if not body.format.startswith("echo-memory/"):
+        raise HTTPException(400, "not an Echo memory export")
+    _gc_visitors()
+    ws = f"blank--{secrets.token_hex(3)}"
+    m = EchoMemory(ws)
+    m.init()
+    m.db.q("MERGE (x:Meta {id:'workspace'}) SET x.scenario=null, x.title=$t, x.created=$c, x.keep=true, x.min_origins=$n",
+           {"t": body.title[:80], "c": int(time.time()), "n": body.min_origins or settings().verify_min_origins})
+    retracted = []
+    for s in body.sources:
+        if not s.get("id") or not (s.get("text") or s.get("title")):
+            continue
+        doc = SourceDoc(id=str(s["id"])[:120], text=str(s.get("text") or "")[:40000], url=s.get("url"), title=str(s.get("title") or "")[:200],
+                        author=str(s.get("author") or "")[:120], published_at=str(s.get("published_at") or "")[:10],
+                        kind=s.get("kind") if s.get("kind") in ("web", "doc", "user") else "web")
+        claims = [Claim(statement=c["statement"], subject=c.get("subject") or "", stance=c.get("stance") or "supports",
+                        quote=c.get("quote") or "", belief=(c.get("belief") or "").removeprefix("b:") or None)
+                  for c in (s.get("claims") or []) if c and c.get("statement")]
+        m.ingest(doc, claims, trust=s.get("trust"))
+        if s.get("retracted"):
+            retracted.append(doc.id)
+    for sid in retracted:
+        m.set_retracted(sid, True, "retracted before export")
+    return {"workspace": ws, "sources": len(body.sources), "stats": m.stats()}
 
 
 # ---------------------------------------------------------------------- reads
@@ -254,9 +382,45 @@ class IngestBody(BaseModel):
     published_at: str = ""
 
 
+class FileBody(BaseModel):
+    filename: str = Field(max_length=200)
+    data_b64: str = Field(max_length=12_000_000)
+
+
+def _file_text(name: str, data: bytes) -> str:
+    low = name.lower()
+    if low.endswith(".pdf"):
+        import io
+
+        from pypdf import PdfReader
+
+        return "\n\n".join((p.extract_text() or "") for p in PdfReader(io.BytesIO(data)).pages[:60])
+    raw = data.decode("utf-8", errors="replace")
+    if low.endswith((".html", ".htm")):
+        import trafilatura
+
+        return trafilatura.extract(raw, output_format="markdown", include_links=True) or ""
+    return raw
+
+
+@app.post("/api/w/{ws}/ingest-file")
+def ingest_file(ws: str, body: FileBody, request: Request) -> dict:
+    """A document (.pdf, .md, .txt, .html) dropped into the studio."""
+    try:
+        data = base64.b64decode(body.data_b64)
+        text = _file_text(body.filename, data).strip()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"could not read {body.filename}: {type(e).__name__}") from e
+    if len(text) < 20:
+        raise HTTPException(400, "no readable text in that file")
+    title = body.filename.rsplit("/", 1)[-1].rsplit(".", 1)[0].replace("_", " ").replace("-", " ")
+    return ingest(ws, IngestBody(text=text[:40000], title=title), request, kind="doc")
+
+
 @app.post("/api/w/{ws}/ingest")
-def ingest(ws: str, body: IngestBody) -> dict:
+def ingest(ws: str, body: IngestBody, request: Request, kind: str = "web") -> dict:
     m = mem(ws)
+    cfg = llm_cfg(request)
     if body.url and not body.text:
         if not settings().allow_live_fetch:
             raise HTTPException(400, "live fetching is disabled")
@@ -271,11 +435,14 @@ def ingest(ws: str, body: IngestBody) -> dict:
                 "published_at": body.published_at, "text": body.text, "raw": ""}
     else:
         raise HTTPException(400, "give a url or text")
-    claims, method = extract_claims(m, page["title"], page["text"])
+    claims, method = extract_claims(m, page["title"], page["text"], cfg)
     sid = "src:" + slug(page["url"] or page["title"], 40)
     doc = SourceDoc(id=sid, text=page["text"], url=page["url"], title=page["title"], author=page["author"] or "",
-                    published_at=(page["published_at"] or "")[:10], raw=page.get("raw", ""))
+                    published_at=(page["published_at"] or "")[:10], raw=page.get("raw", ""),
+                    kind="doc" if kind == "doc" else "web")
     r = m.ingest(doc, claims)
+    if "--" in ws:
+        _keep(ws)
     r["extraction"] = method
     r["claims"] = [c.__dict__ for c in claims]
     return r
@@ -287,9 +454,9 @@ class AskBody(BaseModel):
 
 
 @app.post("/api/w/{ws}/ask")
-async def ask(ws: str, body: AskBody):
+async def ask(ws: str, body: AskBody, request: Request):
     mem(ws)
-    agent = Agent(ws, "plain" if body.mode == "plain" else "echo")
+    agent = Agent(ws, "plain" if body.mode == "plain" else "echo", llm_cfg(request))
 
     async def events():
         try:

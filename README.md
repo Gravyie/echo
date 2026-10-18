@@ -103,6 +103,17 @@ Scenarios: **The safest gateway** (a hospital picks an LLM gateway; one planted,
 
 [Blog post](docs/blog.md) · [Demo script](docs/demo-script.md) · [Submission text](docs/submission.md)
 
+## Echo as a product
+
+The hackathon demo runs free on Groq. Everything else is there for real use:
+
+- **Bring your own model.** Settings → Model: Groq, OpenAI, Anthropic, Google Gemini, OpenRouter, NVIDIA NIM, Together AI or any OpenAI-compatible https endpoint. List the provider's models, test the connection. Keys live in the browser and travel only with your own requests (`X-Echo-LLM-*` headers); the server keeps nothing.
+- **Trust policy per memory.** How many independent origins make a belief verified (1-5). Changing it rescores every belief. A new verdict, *Needs more origins*, covers agreeing origins below the bar.
+- **Many memories.** Create, name and switch; export to portable JSON and import anywhere.
+- **Sources.** Bulk URLs (read in order, so copies link back to originals), PDF / Markdown / HTML / text files, pasted text.
+- **Connect.** Every memory has its own MCP address (`/mcp/?workspace=<id>`), with one-click setup for Claude Code, Cursor, Claude Desktop, VS Code, Windsurf, plus LangGraph, OpenAI Agents SDK and REST snippets.
+- **Docs** at `/docs`.
+
 ## Use it from any agent (MCP)
 
 The API serves an MCP server at `/mcp/` (streamable HTTP), or run it over stdio with `uv run echo-mcp`.

@@ -229,9 +229,40 @@ class EchoMemory:
         parents = {r["id"]: [u for u in r["ups"] if u] for r in rows}
         return items, info, parents
 
+    @property
+    def min_origins(self) -> int:
+        """Independent origins needed to call a belief VERIFIED: this memory's trust policy."""
+        if not hasattr(self, "_min_origins"):
+            r = self.db.one("MATCH (m:Meta {id:'workspace'}) RETURN m.min_origins AS n", ro=True) or {}
+            self._min_origins = int(r.get("n") or settings().verify_min_origins)
+        return self._min_origins
+
+    def set_policy(self, min_origins: int) -> list[dict[str, Any]]:
+        """Change the trust policy and rescore every belief under it."""
+        self.db.q("MERGE (m:Meta {id:'workspace'}) SET m.min_origins=$n", {"n": int(min_origins)})
+        self._min_origins = int(min_origins)
+        with ws_lock(self.ws):
+            ids = [r["id"] for r in self.db.q("MATCH (b:Belief) RETURN b.id AS id", ro=True)]
+            return [self._rescore(b) for b in ids]
+
+    def export(self) -> dict[str, Any]:
+        """Everything a person added (not agent notes, not stubs), with the claims each source made."""
+        rows = self.db.q(
+            "MATCH (s:Source) WHERE s.kind IN ['web','doc','user'] "
+            "OPTIONAL MATCH (s)-[:YIELDED]->(o:Observation)-[r:SUPPORTS|CONTRADICTS]->(b:Belief) "
+            "OPTIONAL MATCH (b)-[:ABOUT]->(e:Entity) "
+            "WITH s, collect(CASE WHEN b IS NULL THEN null ELSE {statement:b.statement, subject:e.name, "
+            "stance: CASE type(r) WHEN 'CONTRADICTS' THEN 'contradicts' ELSE 'supports' END, quote:o.quote, belief:b.id} END) AS claims "
+            "RETURN s.id AS id, s.kind AS kind, s.url AS url, s.title AS title, s.author AS author, "
+            "s.published_at AS published_at, s.text AS text, s.retracted AS retracted, s.trust AS trust, claims "
+            "ORDER BY s.seq",
+            ro=True,
+        )
+        return {"format": "echo-memory/1", "min_origins": self.min_origins, "sources": rows}
+
     def verdict(self, belief_id: str):
         items, info, parents = self._support(belief_id)
-        return score(items, info, parents, settings().verify_min_origins), items, info, parents
+        return score(items, info, parents, self.min_origins), items, info, parents
 
     def _rescore(self, belief_id: str) -> dict[str, Any]:
         before = self.db.one(

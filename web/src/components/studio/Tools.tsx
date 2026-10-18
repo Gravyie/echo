@@ -17,7 +17,9 @@ export function IngestPanel({
   onDone: (r: IngestResult) => void;
   onExamples?: () => void;
 }) {
-  const [mode, setMode] = useState<"url" | "text">("url");
+  const [mode, setMode] = useState<"url" | "text" | "file">("url");
+  const [progress, setProgress] = useState<string | null>(null);
+  const [drag, setDrag] = useState(false);
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
@@ -39,18 +41,76 @@ export function IngestPanel({
     }
   };
 
+  // Several URLs (one per line) are read in order, so later copies link back to earlier originals.
+  const urls = url
+    .split(/\s+/)
+    .map((u) => u.trim())
+    .filter((u) => /^https?:\/\//.test(u));
   const go = async () => {
     setBusy(true);
     setErr(null);
     setRes(null);
     try {
-      const r = await api.ingest(ws, mode === "url" ? { url } : { text, title, url: url || undefined });
+      if (mode === "url" && urls.length > 1) {
+        const failed: string[] = [];
+        let last: IngestResult | null = null;
+        for (let i = 0; i < urls.length; i++) {
+          setProgress(`Reading ${i + 1} of ${urls.length}: ${urls[i].replace(/^https?:\/\//, "").slice(0, 40)}`);
+          try {
+            last = await api.ingest(ws, { url: urls[i] });
+            onDone(last);
+          } catch {
+            failed.push(urls[i]);
+          }
+        }
+        if (last) setRes(last);
+        if (failed.length) setErr(`Could not read ${failed.length} of ${urls.length}: ${failed.join(", ")}`);
+        return;
+      }
+      const r = await api.ingest(ws, mode === "url" ? { url: urls[0] ?? url } : { text, title, url: url || undefined });
       setRes(r);
       onDone(r);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
       setBusy(false);
+      setProgress(null);
+    }
+  };
+
+  const files = async (list: FileList | File[]) => {
+    const arr = [...list].filter((f) => /\.(pdf|md|markdown|txt|html?)$/i.test(f.name));
+    if (!arr.length) {
+      setErr("Drop .pdf, .md, .txt or .html files.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    setRes(null);
+    const failed: string[] = [];
+    try {
+      for (let i = 0; i < arr.length; i++) {
+        const f = arr[i];
+        setProgress(`Reading ${f.name} (${i + 1} of ${arr.length})`);
+        if (f.size > 8_000_000) {
+          failed.push(`${f.name} (over 8 MB)`);
+          continue;
+        }
+        const buf = new Uint8Array(await f.arrayBuffer());
+        let bin = "";
+        for (let j = 0; j < buf.length; j += 0x8000) bin += String.fromCharCode(...buf.subarray(j, j + 0x8000));
+        try {
+          const r = await api.ingestFile(ws, f.name, btoa(bin));
+          setRes(r);
+          onDone(r);
+        } catch (e) {
+          failed.push(`${f.name} (${(e as Error).message})`);
+        }
+      }
+      if (failed.length) setErr(`Skipped: ${failed.join("; ")}`);
+    } finally {
+      setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -76,9 +136,9 @@ export function IngestPanel({
         </button>
       </div>
       <div className="flex gap-1 rounded-lg bg-surface-2 p-1 text-[12px]">
-        {(["url", "text"] as const).map((m) => (
+        {(["url", "file", "text"] as const).map((m) => (
           <button key={m} onClick={() => setMode(m)} className={`flex-1 rounded-md py-1.5 ${mode === m ? "bg-surface text-text shadow-card" : "text-faint hover:text-muted"}`}>
-            {m === "url" ? "From a URL" : "Paste text"}
+            {m === "url" ? "URLs" : m === "file" ? "Files" : "Paste text"}
           </button>
         ))}
       </div>
@@ -88,29 +148,64 @@ export function IngestPanel({
           <input id="ing-title" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[13px] text-text focus:border-accent/60 focus:outline-none" />
         </div>
       )}
-      <div className="space-y-1.5">
-        <label htmlFor="ing-url" className="text-[12px] text-muted">{mode === "url" ? "Page URL" : "URL (optional)"}</label>
-        <input
-          id="ing-url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://"
-          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 font-mono text-[12.5px] text-text placeholder:text-faint focus:border-accent/60 focus:outline-none"
-        />
-      </div>
+      {mode === "file" && (
+        <label
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            files(e.dataTransfer.files);
+          }}
+          className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-4 py-10 text-center transition-colors ${
+            drag ? "border-accent bg-accent-soft" : "border-line-strong hover:bg-surface-2"
+          }`}
+        >
+          <span className="text-[13px] font-medium text-text">Drop files, or click to choose</span>
+          <span className="mt-1 text-[11.5px] text-faint">PDF, Markdown, text or HTML · up to 8 MB each</span>
+          <input type="file" multiple accept=".pdf,.md,.markdown,.txt,.html,.htm" className="hidden" onChange={(e) => e.target.files && files(e.target.files)} />
+        </label>
+      )}
+      {mode !== "file" && (
+        <div className="space-y-1.5">
+          <label htmlFor="ing-url" className="text-[12px] text-muted">{mode === "url" ? "Page URLs, one per line" : "URL (optional)"}</label>
+          {mode === "url" ? (
+            <textarea
+              id="ing-url"
+              rows={4}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={"https://example.com/original-report\nhttps://news.example/rewrite"}
+              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 font-mono text-[12px] leading-relaxed text-text placeholder:text-faint focus:border-accent/60 focus:outline-none"
+            />
+          ) : (
+            <input
+              id="ing-url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://"
+              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 font-mono text-[12.5px] text-text placeholder:text-faint focus:border-accent/60 focus:outline-none"
+            />
+          )}
+        </div>
+      )}
       {mode === "text" && (
         <div className="space-y-1.5">
           <label htmlFor="ing-text" className="text-[12px] text-muted">Text</label>
           <textarea id="ing-text" value={text} onChange={(e) => setText(e.target.value)} rows={8} className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[13px] text-text focus:border-accent/60 focus:outline-none" />
         </div>
       )}
-      <button
-        disabled={busy || (mode === "url" ? !url : !text)}
+      {mode !== "file" && <button
+        disabled={busy || (mode === "url" ? !urls.length : !text)}
         onClick={go}
         className="w-full rounded-md bg-text py-2.5 text-[13px] font-medium text-bg transition-transform active:scale-[0.98] disabled:opacity-40"
       >
-        {busy ? "Reading and linking…" : "Ingest into memory"}
-      </button>
+        {busy ? "Reading and linking…" : mode === "url" && urls.length > 1 ? `Add ${urls.length} pages` : "Ingest into memory"}
+      </button>}
+      {progress && <p className="font-mono text-[11.5px] text-muted">{progress}</p>}
       {err && <p className="text-[12.5px] text-bad">{err}</p>}
       {res && (
         <div className="space-y-3 rounded-xl border border-line bg-surface p-3.5 text-[12.5px]">

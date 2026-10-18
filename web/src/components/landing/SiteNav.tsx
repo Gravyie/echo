@@ -7,11 +7,11 @@ import { Mark, ThemeToggle } from "@/components/Brand";
 import { REPO_URL } from "@/lib/site";
 
 const LINKS = [
-  ["#problem", "Problem"],
-  ["#how", "How it works"],
-  ["#results", "Results"],
-  ["#falkordb", "FalkorDB"],
-  ["#mcp", "MCP"],
+  ["/#how", "How it works"],
+  ["/#results", "Results"],
+  ["/#integrations", "Integrations"],
+  ["/#falkordb", "FalkorDB"],
+  ["/docs", "Docs"],
 ];
 
 /**
@@ -46,8 +46,9 @@ function glideToTop() {
 }
 
 /** Light-on-painting over the hero, paper once the page scrolls past it. */
-export function SiteNav() {
-  const [solid, setSolid] = useState(false);
+export function SiteNav({ alwaysSolid = false }: { alwaysSolid?: boolean } = {}) {
+  const [scrolled, setSolid] = useState(false);
+  const solid = alwaysSolid || scrolled;
   useEffect(() => {
     const on = () => setSolid(window.scrollY > window.innerHeight * 0.55);
     on();
@@ -67,6 +68,7 @@ export function SiteNav() {
           aria-label="Echo, back to top"
           onClick={(e) => {
             // already on the landing page: glide back to the top instead of a no-op navigation
+            if (window.location.pathname !== "/") return;
             e.preventDefault();
             window.history.replaceState(null, "", "/");
             glideToTop();

@@ -24,6 +24,7 @@ type L = LinkObject & GraphEdge & { key: string; lineage: boolean };
 const LINEAGE = new Set(["CITES", "COPIED_FROM", "DERIVED_FROM"]);
 const STATUS_VAR: Record<Status, string> = {
   VERIFIED: "--ok",
+  CORROBORATING: "--single",
   SINGLE_ORIGIN: "--single",
   CONTESTED: "--contested",
   DISPUTED: "--bad",

@@ -4,7 +4,10 @@ import {
   ArrowCounterClockwise,
   ArrowsInSimple,
   ArrowsOutSimple,
+  CaretDown,
   ChatCircleText,
+  GearSix,
+  PlugsConnected,
   Code,
   Graph as GraphIcon,
   Plus,
@@ -35,6 +38,9 @@ import { GraphView, type Highlight } from "./GraphView";
 import { Guide, GuidePill, type GuideKey, type GuideStep } from "./Guide";
 import { LineageView } from "./LineageView";
 import { Tour, type TourStep } from "./Tour";
+import { SettingsSheet } from "./SettingsSheet";
+import { ConnectSheet } from "./ConnectSheet";
+import { getMemories, getModel, rememberMemory, setActiveMemory, setMemories, type OwnMemory } from "@/lib/prefs";
 
 const TOUR: TourStep[] = [
   {
@@ -119,6 +125,21 @@ export default function Studio() {
   const turnId = useRef(0);
   const [view, setView] = useState<"map" | "lineage">("map");
   const [tourOpen, setTourOpen] = useState(false);
+  const [sheet, setSheet] = useState<"settings" | "connect" | null>(null);
+  const [memNonce, setMemNonce] = useState(0); // bump to reload the active own memory
+  const [mems, setMems] = useState<OwnMemory[]>([]);
+  const [memMenu, setMemMenu] = useState(false);
+  const [modelLabel, setModelLabel] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const m = getModel();
+      setModelLabel(m.provider && m.provider !== "echo" ? m.model || m.provider : null);
+    };
+    read();
+    setMems(getMemories());
+    window.addEventListener("echo:model", read);
+    return () => window.removeEventListener("echo:model", read);
+  }, []);
   // Full-width canvas: hides both side panels to explore the map or a lineage.
   const [expanded, setExpanded] = useState(false);
 
@@ -214,6 +235,10 @@ export default function Studio() {
         if (!w) {
           w = (await api.createWorkspace(scenario === BLANK ? null : scenario)).workspace;
           storageSet(key, w);
+          if (scenario === BLANK) {
+            rememberMemory(w, "Untitled memory");
+            setMems(getMemories());
+          }
         }
         if (cancelled) return;
         setWs(w);
@@ -228,7 +253,30 @@ export default function Studio() {
     return () => {
       cancelled = true;
     };
-  }, [scenario, refresh, mark]);
+  }, [scenario, refresh, mark, memNonce]);
+
+  // Own memories: switch, create, forget.
+  const openMemory = (w: string) => {
+    setActiveMemory(w);
+    setMemMenu(false);
+    if (scenario !== BLANK) switchScenario(BLANK);
+    else setMemNonce((n) => n + 1);
+  };
+  const newMemory = async () => {
+    const { workspace } = await api.createWorkspace(null);
+    rememberMemory(workspace, "Untitled memory");
+    setMems(getMemories());
+    openMemory(workspace);
+  };
+  // Keep the saved list's titles in sync with the server.
+  useEffect(() => {
+    if (scenario !== BLANK || !ws?.startsWith("blank--") || info?.workspace !== ws || !info?.meta?.title) return;
+    const list = getMemories();
+    const hit = list.find((m) => m.ws === ws);
+    if (!hit) rememberMemory(ws, info.meta.title);
+    else if (hit.title !== info.meta.title) setMemories(list.map((m) => (m.ws === ws ? { ...m, title: info.meta.title } : m)));
+    setMems(getMemories());
+  }, [scenario, ws, info]);
 
   const switchScenario = (s: string) => {
     if (s === scenario) return;
@@ -431,7 +479,8 @@ export default function Studio() {
 
   // ---------------------------------------------------------------- render
 
-  const scenarioTabs = [...scenarios.map((s) => ({ id: s.id, title: s.title })), { id: BLANK, title: "Your memory" }];
+  const ownTitle = scenario === BLANK && info?.meta?.title && info.meta.title !== "Your memory" ? info.meta.title : "Your memory";
+  const scenarioTabs = [...scenarios.map((s) => ({ id: s.id, title: s.title })), { id: BLANK, title: ownTitle }];
 
   // The belief with the widest gap between sources and origins: the one the story is about.
   const topEcho = [...beliefs]
@@ -525,7 +574,35 @@ export default function Studio() {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden">
       <Tour steps={TOUR} open={tourOpen} onClose={closeTour} />
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
+      <SettingsSheet
+        open={sheet === "settings"}
+        onClose={() => setSheet(null)}
+        ws={ws}
+        title={info?.meta?.title ?? "Memory"}
+        minOrigins={info?.meta?.min_origins ?? 2}
+        owned={scenario === BLANK}
+        flash={flash}
+        onChanged={() => ws && refresh(ws)}
+        onImported={(w, t) => {
+          rememberMemory(w, t);
+          setMems(getMemories());
+          openMemory(w);
+        }}
+        onDeleted={() => {
+          const rest = getMemories().filter((m) => m.ws !== ws);
+          setMemories(rest);
+          setMems(rest);
+          if (rest[0]) openMemory(rest[0].ws);
+          else {
+            try {
+              localStorage.removeItem("echo.ws.blank");
+            } catch {}
+            setMemNonce((n) => n + 1);
+          }
+        }}
+      />
+      <ConnectSheet open={sheet === "connect"} onClose={() => setSheet(null)} ws={ws} />
+      <header className="relative flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <Mark size={28} />
           <span className="display text-[21px] leading-none">Echo</span>
@@ -543,7 +620,40 @@ export default function Studio() {
               {s.title}
             </button>
           ))}
+          <div className="relative">
+            <button
+              onClick={() => setMemMenu((v) => !v)}
+              aria-label="Your memories"
+              className="grid h-full place-items-center rounded-md px-1.5 text-faint hover:text-text"
+            >
+              <CaretDown size={12} />
+            </button>
+          </div>
         </div>
+        {memMenu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMemMenu(false)} />
+            <div className="absolute left-48 top-12 z-50 w-72 rounded-lg border border-line bg-surface p-1.5 shadow-card">
+              <div className="px-2.5 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">Your memories</div>
+              {mems.length === 0 && <div className="px-2.5 py-2 text-[12px] text-muted">None yet.</div>}
+              {mems.map((m) => (
+                <button
+                  key={m.ws}
+                  onClick={() => openMemory(m.ws)}
+                  className={`flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-[12.5px] hover:bg-surface-2 ${m.ws === ws ? "text-text" : "text-muted"}`}
+                >
+                  <span className="truncate">{m.title}</span>
+                  <span className="shrink-0 font-mono text-[10px] text-faint">{m.ws.split("--")[1]}</span>
+                </button>
+              ))}
+              <div className="mt-1 border-t border-line pt-1">
+                <button onClick={newMemory} className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-2 text-left text-[12.5px] text-text hover:bg-surface-2">
+                  <Plus size={13} /> New memory
+                </button>
+              </div>
+            </div>
+          </>
+        )}
         <div className="ml-auto hidden items-center gap-4 font-mono text-[11px] text-faint 2xl:flex">
           {stats && (
             <>
@@ -565,13 +675,24 @@ export default function Studio() {
             <GuidePill count={doneCount} total={guideSteps.length} onClick={() => toggleGuide(!guideOpen)} />
           </span>
           {health && (
-            <span
-              className="hidden rounded-md border border-line px-2 py-1.5 font-mono text-[11px] text-muted xl:block"
-              title={health.llm ? "Agent runs on an LLM with tool calling" : "No LLM key configured; the built-in reasoner answers"}
+            <button
+              onClick={() => setSheet("settings")}
+              className="hidden items-center gap-1.5 rounded-md border border-line px-2 py-1.5 font-mono text-[11px] text-muted hover:text-text xl:flex"
+              title="Choose the model the agent runs on"
             >
-              {health.llm ? health.llm_model : "built-in reasoner"}
-            </span>
+              <span className={`size-1.5 rounded-full ${modelLabel ? "bg-accent" : "bg-ok"}`} />
+              {modelLabel ?? (health.llm ? health.llm_model : "built-in reasoner")}
+            </button>
           )}
+          <button
+            onClick={() => setSheet("connect")}
+            className="flex items-center gap-1.5 rounded-md bg-text px-2.5 py-1.5 text-[12px] font-medium text-bg hover:bg-text/90"
+          >
+            <PlugsConnected size={13} /> <span className="hidden sm:inline">Connect</span>
+          </button>
+          <button onClick={() => setSheet("settings")} aria-label="Settings" className="grid size-8 place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-text">
+            <GearSix size={16} />
+          </button>
           <ThemeToggle />
           <button
             onClick={reset}

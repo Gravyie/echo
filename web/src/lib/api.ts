@@ -1,6 +1,8 @@
+import { modelHeaders } from "./prefs";
+
 export const API = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
-export type Status = "VERIFIED" | "SINGLE_ORIGIN" | "CONTESTED" | "DISPUTED" | "UNSUPPORTED" | "RETRACTED";
+export type Status = "VERIFIED" | "CORROBORATING" | "SINGLE_ORIGIN" | "CONTESTED" | "DISPUTED" | "UNSUPPORTED" | "RETRACTED";
 
 export interface Belief {
   id: string;
@@ -95,6 +97,14 @@ export interface SourceDetail {
   owners: { id: string; name: string; kind: string }[];
 }
 
+export interface Provider {
+  id: string;
+  label: string;
+  base: string;
+  keys: string;
+  models: string[];
+}
+
 export interface Scenario {
   id: string;
   title: string;
@@ -124,7 +134,7 @@ export interface Origin {
 
 export interface WorkspaceInfo {
   workspace: string;
-  meta: { scenario: string | null; title: string };
+  meta: { scenario: string | null; title: string; min_origins?: number; keep?: boolean };
   scenario: Scenario | null;
   stats: { sources: number; beliefs: number; mentions: number; echoes: number; verified: number; lineage_edges: number };
 }
@@ -140,7 +150,7 @@ export type AgentEvent =
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(`${API}${path}`, {
     ...init,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "content-type": "application/json", ...modelHeaders(), ...(init?.headers ?? {}) },
   });
   if (!r.ok) {
     let msg = `${r.status}`;
@@ -179,6 +189,20 @@ export const api = {
       `/api/w/${ws}/ingest`,
       { method: "POST", body: JSON.stringify(body) },
     ),
+  ingestFile: (ws: string, filename: string, data_b64: string) =>
+    j<{ source: string; edges: { rel: string; src: string; dst: string; method: string; evidence: string }[]; rescored: Rescore[]; extraction: string; claims: { statement: string; stance: string }[] }>(
+      `/api/w/${ws}/ingest-file`,
+      { method: "POST", body: JSON.stringify({ filename, data_b64 }) },
+    ),
+  providers: () => j<{ default: { model: string; available: boolean; label: string }; providers: Provider[] }>("/api/llm/providers"),
+  testModel: (headers: Record<string, string>) =>
+    j<{ ok: boolean; model: string; ms?: number; reply?: string; error?: string }>("/api/llm/test", { method: "POST", headers }),
+  listModels: (headers: Record<string, string>) => j<{ models: string[] }>("/api/llm/models", { method: "POST", headers }),
+  updateSettings: (ws: string, body: { title?: string; min_origins?: number }) =>
+    j<{ ok: boolean; rescored?: Rescore[]; ms?: number }>(`/api/w/${ws}/settings`, { method: "PATCH", body: JSON.stringify(body) }),
+  exportMemory: (ws: string) => j<Record<string, unknown>>(`/api/w/${ws}/export`),
+  importMemory: (data: unknown) => j<{ workspace: string }>("/api/workspaces/import", { method: "POST", body: JSON.stringify(data) }),
+  deleteMemory: (ws: string) => j<{ ok: boolean }>(`/api/w/${ws}`, { method: "DELETE" }),
   cypher: (ws: string, cypher: string) =>
     j<{ rows: Record<string, unknown>[]; cypher: CypherEntry[] }>(`/api/w/${ws}/cypher`, { method: "POST", body: JSON.stringify({ cypher }) }),
 };
@@ -187,7 +211,7 @@ export const api = {
 export async function ask(ws: string, question: string, mode: "echo" | "plain", onEvent: (e: AgentEvent) => void, signal?: AbortSignal) {
   const r = await fetch(`${API}/api/w/${ws}/ask`, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "text/event-stream" },
+    headers: { "content-type": "application/json", accept: "text/event-stream", ...modelHeaders() },
     body: JSON.stringify({ question, mode }),
     signal,
   });
@@ -218,7 +242,8 @@ export async function ask(ws: string, question: string, mode: "echo" | "plain", 
 }
 
 export const STATUS_META: Record<Status, { label: string; color: string; hint: string }> = {
-  VERIFIED: { label: "Verified", color: "var(--ok)", hint: "Two or more independent origins" },
+  VERIFIED: { label: "Verified", color: "var(--ok)", hint: "Enough independent origins for this memory's policy" },
+  CORROBORATING: { label: "Needs more origins", color: "var(--single)", hint: "Independent origins agree, but fewer than the policy requires" },
   SINGLE_ORIGIN: { label: "Single origin", color: "var(--single)", hint: "Every source traces back to one origin" },
   CONTESTED: { label: "Contested", color: "var(--contested)", hint: "Independent origins disagree" },
   DISPUTED: { label: "Disputed", color: "var(--bad)", hint: "Independent evidence outweighs support" },

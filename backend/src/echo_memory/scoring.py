@@ -64,7 +64,7 @@ class Verdict:
     origins: int  # independent live supporting clusters
     against_origins: int
     confidence: float
-    status: str  # VERIFIED | SINGLE_ORIGIN | CONTESTED | DISPUTED | UNSUPPORTED | RETRACTED
+    status: str  # VERIFIED | CORROBORATING | SINGLE_ORIGIN | CONTESTED | DISPUTED | UNSUPPORTED | RETRACTED
     echo: bool  # more sources than origins
     plain_confidence: float
     plain_status: str
@@ -211,7 +211,8 @@ def score(
     elif len(live_sup) >= min_origins and conf >= 0.65:
         status = "VERIFIED"
     elif live_sup:
-        status = "SINGLE_ORIGIN" if len(live_sup) == 1 else "CONTESTED"
+        # independent but not enough of them for this memory's policy (or too weak); nothing disagrees
+        status = "SINGLE_ORIGIN" if len(live_sup) == 1 else ("CONTESTED" if live_con else "CORROBORATING")
     else:
         status = "UNSUPPORTED"
 
