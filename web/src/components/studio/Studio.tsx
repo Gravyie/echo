@@ -31,7 +31,7 @@ import {
   type WorkspaceInfo,
 } from "@/lib/api";
 import { AskPanel, applyEvent, type Step, type Turn } from "./AskPanel";
-import { MapView, type Highlight } from "./MapView";
+import { GraphView, type Highlight } from "./GraphView";
 import { Guide, GuidePill, type GuideKey, type GuideStep } from "./Guide";
 import { LineageView } from "./LineageView";
 import { Tour, type TourStep } from "./Tour";
@@ -656,7 +656,7 @@ export default function Studio() {
               onSelectSource={(id) => setSel({ kind: "source", id })}
             />
           ) : (
-            <MapView
+            <GraphView
               nodes={graph.nodes}
               edges={graph.edges}
               highlight={highlight}
@@ -826,12 +826,11 @@ function Legend({
   return (
     <div className="pointer-events-none absolute right-3 top-3 z-10 hidden max-w-[calc(100%-330px)] justify-end xl:flex">
       <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5 rounded-lg border border-line bg-surface/90 px-3 py-1.5 text-[11px] text-muted shadow-card backdrop-blur">
-        {item(<span className="h-2.5 w-3.5 rounded-[3px] border border-accent bg-surface" />, "Origin")}
-        {item(<span className="h-2.5 w-3.5 rounded-[3px] border border-line-strong bg-surface" />, "Copy")}
-        {item(<span className="h-2.5 w-3.5 rounded-[3px] border border-dashed border-accent/50 bg-accent-soft" />, "Family")}
+        {item(<span className="size-2.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]" />, "Origin")}
+        {item(<span className="size-2 rounded-full bg-[#a3a29b]" />, "Source")}
+        {item(<span className="size-3 rounded-full bg-bad ring-1 ring-bad/50 ring-offset-1 ring-offset-surface" />, "Belief (by verdict)")}
+        {item(<span className="size-2 rounded-full bg-agent" />, "Agent note")}
         {item(<span className="h-px w-3.5 bg-accent" />, "Copied / cites")}
-        {item(<span className="h-px w-3.5 bg-ok" />, "Supports")}
-        {item(<span className="h-0 w-3.5 border-t border-dashed border-bad" />, "Contradicts")}
         <span className="h-3 w-px bg-line-strong" />
         {toggle(showOwners, setShowOwners, "Owner tags")}
         {toggle(showAgent, setShowAgent, "Agent memory")}
