@@ -1,75 +1,60 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
 
-/* Echo design tokens. Dark is the instrument's native look; light follows the system or the toggle. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Echo design tokens.
+ * Paper and ink, one ember accent. Light is the default; [data-theme="dark"] (the toggle) flips everything,
+ * and any element with .ink renders its subtree with the dark tokens (used for dark bands on the landing page).
+ */
 :root {
-  --bg: #0b0c0e;
-  --surface: #121417;
-  --surface-2: #181b1f;
-  --surface-3: #20242a;
-  --line: rgb(255 255 255 / 0.07);
-  --line-strong: rgb(255 255 255 / 0.14);
-  --text: #e9e7e2;
-  --muted: #a3a4a7;
-  --faint: #6f7177;
-  --accent: #f2a541;
-  --accent-soft: rgb(242 165 65 / 0.14);
-  --accent-ink: #1b1204;
-  --ok: #62c491;
-  --single: #8fa5c4;
-  --contested: #d6b45e;
-  --bad: #e4705f;
-  --gone: #75777c;
-  --owner: #6c7480;
-  --agent: #b9a3e3;
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #f3f3f1;
-    --surface: #fbfbfa;
-    --surface-2: #efefec;
-    --surface-3: #e5e5e1;
-    --line: rgb(20 22 26 / 0.09);
-    --line-strong: rgb(20 22 26 / 0.18);
-    --text: #15171a;
-    --muted: #55585e;
-    --faint: #85888e;
-    --accent: #b5680a;
-    --accent-soft: rgb(181 104 10 / 0.12);
-    --accent-ink: #fffaf2;
-    --ok: #1f8a57;
-    --single: #4d6a93;
-    --contested: #8f6d12;
-    --bad: #c2412f;
-    --gone: #8a8c90;
-    --owner: #7b818b;
-    --agent: #6f55a8;
-    color-scheme: light;
-  }
-}
-
-:root[data-theme="light"] {
-  --bg: #f3f3f1;
-  --surface: #fbfbfa;
-  --surface-2: #efefec;
-  --surface-3: #e5e5e1;
-  --line: rgb(20 22 26 / 0.09);
-  --line-strong: rgb(20 22 26 / 0.18);
-  --text: #15171a;
-  --muted: #55585e;
-  --faint: #85888e;
-  --accent: #b5680a;
-  --accent-soft: rgb(181 104 10 / 0.12);
-  --accent-ink: #fffaf2;
-  --ok: #1f8a57;
-  --single: #4d6a93;
-  --contested: #8f6d12;
-  --bad: #c2412f;
-  --gone: #8a8c90;
-  --owner: #7b818b;
-  --agent: #6f55a8;
+  --bg: #f4f3ef;
+  --surface: #fbfbf9;
+  --surface-2: #eeede8;
+  --surface-3: #e4e3dd;
+  --line: rgb(18 18 18 / 0.09);
+  --line-strong: rgb(18 18 18 / 0.17);
+  --text: #141413;
+  --muted: #55554f;
+  --faint: #8a8984;
+  --accent: #d9480f;
+  --accent-soft: rgb(217 72 15 / 0.09);
+  --accent-ink: #ffffff;
+  --ok: #1d7a4c;
+  --single: #3d5e8e;
+  --contested: #946400;
+  --bad: #c0362c;
+  --gone: #8d8d89;
+  --owner: #7a7e86;
+  --agent: #6a4fa6;
+  --shadow: 0 1px 2px rgb(18 18 18 / 0.04), 0 8px 24px -12px rgb(18 18 18 / 0.12);
   color-scheme: light;
+}
+
+:root[data-theme="dark"],
+.ink {
+  --bg: #0e0e0d;
+  --surface: #151514;
+  --surface-2: #1c1c1a;
+  --surface-3: #262624;
+  --line: rgb(255 255 250 / 0.08);
+  --line-strong: rgb(255 255 250 / 0.15);
+  --text: #edece6;
+  --muted: #a6a59f;
+  --faint: #73726d;
+  --accent: #f2743d;
+  --accent-soft: rgb(242 116 61 / 0.13);
+  --accent-ink: #160a04;
+  --ok: #5fc48f;
+  --single: #8fa8cc;
+  --contested: #d8b45a;
+  --bad: #ee6b5b;
+  --gone: #77766f;
+  --owner: #6c7079;
+  --agent: #b4a0e8;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px -16px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -91,9 +76,10 @@
   --color-bad: var(--bad);
   --color-gone: var(--gone);
   --color-agent: var(--agent);
-  --font-display: var(--font-space-grotesk);
-  --font-sans: var(--font-plex);
-  --font-mono: var(--font-jetbrains);
+  --font-display: var(--font-newsreader);
+  --font-sans: var(--font-geist);
+  --font-mono: var(--font-geist-mono);
+  --shadow-card: var(--shadow);
 }
 
 html {
@@ -103,13 +89,51 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.ink {
+  background: var(--bg);
+  color: var(--text);
 }
 
 ::selection {
   background: var(--accent-soft);
   color: var(--text);
+}
+
+/* Editorial display type: the serif, set tight. */
+.display {
+  font-family: var(--font-newsreader), ui-serif, Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.022em;
+  font-optical-sizing: auto;
+}
+
+/* Mono label with a small square marker. */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+}
+
+/* Dot-matrix field, used behind diagrams and the graph canvas. */
+.dots {
+  background-image: radial-gradient(var(--line-strong) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 
 /* Fine grain over the page: fixed, non-interactive, so it never repaints on scroll. */
@@ -119,8 +143,13 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 60;
-  opacity: 0.035;
+  opacity: 0.04;
+  mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+[data-theme="dark"] .grain::after {
+  mix-blend-mode: screen;
+  opacity: 0.03;
 }
 
 .scrollbar-thin {
@@ -128,12 +157,13 @@ body {
   scrollbar-color: var(--line-strong) transparent;
 }
 
-.prose-echo p { margin: 0.45rem 0; line-height: 1.6; }
+.prose-echo p { margin: 0.45rem 0; line-height: 1.62; }
 .prose-echo ul { margin: 0.4rem 0; padding-left: 1.1rem; list-style: disc; }
+.prose-echo ol { margin: 0.4rem 0; padding-left: 1.2rem; list-style: decimal; }
 .prose-echo li { margin: 0.25rem 0; line-height: 1.55; }
 .prose-echo li::marker { color: var(--faint); }
 .prose-echo strong { color: var(--text); font-weight: 600; }
-.prose-echo code { font-family: var(--font-jetbrains); font-size: 0.85em; background: var(--surface-3); padding: 0.05rem 0.3rem; border-radius: 4px; }
+.prose-echo code { font-family: var(--font-geist-mono); font-size: 0.85em; background: var(--surface-3); padding: 0.05rem 0.3rem; border-radius: 4px; }
 
 @keyframes shimmer {
   from { background-position: -200% 0; }
@@ -144,6 +174,19 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
 }
+
+/* React Flow: inherit Echo's tokens. */
+.react-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: var(--line-strong);
+  --xy-attribution-background-color: transparent;
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--surface-2);
+  --xy-controls-button-color: var(--muted);
+  --xy-controls-button-border-color: var(--line);
+}
+.react-flow__attribution { display: none; }
+.react-flow__edge-textbg { fill: var(--bg); }
 
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }

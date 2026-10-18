@@ -13,6 +13,8 @@ export interface Step {
   summary?: string;
   cypher?: CypherEntry[];
   highlight?: { nodes?: string[]; edges?: string[][]; focus?: string };
+  t0?: number;
+  ms?: number;
 }
 export interface Run {
   steps: Step[];
@@ -23,6 +25,7 @@ export interface Run {
   seconds?: number;
   note?: string | null;
   llm?: boolean;
+  t0?: number;
 }
 export interface Turn {
   id: number;
@@ -34,15 +37,15 @@ export interface Turn {
 export function applyEvent(run: Run, e: AgentEvent): Run {
   switch (e.type) {
     case "start":
-      return { ...run, llm: e.llm };
+      return { ...run, llm: e.llm, t0: 0 };
     case "notice":
       return { ...run, notice: e.text };
     case "step":
-      return { ...run, steps: [...run.steps, { tool: e.tool, args: e.args }] };
+      return { ...run, steps: [...run.steps, { tool: e.tool, args: e.args, t0: e.at }] };
     case "step_result": {
       const steps = run.steps.slice();
       const i = steps.length - 1;
-      if (i >= 0) steps[i] = { ...steps[i], summary: e.summary, cypher: e.cypher, highlight: e.highlight };
+      if (i >= 0) steps[i] = { ...steps[i], summary: e.summary, cypher: e.cypher, highlight: e.highlight, ms: e.at != null && steps[i].t0 != null ? e.at - steps[i].t0 : undefined };
       return { ...run, steps };
     }
     case "answer":
@@ -67,7 +70,7 @@ const TOOL_ICON: Record<string, typeof Graph> = {
   query_graph: Database,
 };
 
-function StepRow({ s, onHighlight }: { s: Step; onHighlight: (s: Step) => void }) {
+function StepRow({ s, onHighlight, run }: { s: Step; onHighlight: (s: Step) => void; run: Run }) {
   const [open, setOpen] = useState(false);
   const Icon = TOOL_ICON[s.tool] ?? Graph;
   const arg = (s.args.belief_id as string) ?? (s.args.query as string) ?? (s.args.cypher as string) ?? "";
@@ -83,6 +86,9 @@ function StepRow({ s, onHighlight }: { s: Step; onHighlight: (s: Step) => void }
             <span className="truncate font-mono text-[11px] text-faint">{arg}</span>
           </button>
           {s.summary && <div className="mt-0.5 text-[12px] leading-snug text-muted">{s.summary}</div>}
+          {s.t0 != null && run.t0 != null && (
+            <Waterfall start={s.t0 - run.t0} ms={s.ms} total={Math.max(1, (run.seconds ?? 0) * 1000, ...run.steps.map((x) => (x.t0 ?? 0) - run.t0! + (x.ms ?? 0)))} />
+          )}
           {!!s.cypher?.length && (
             <button onClick={() => setOpen((o) => !o)} className="mt-1 flex items-center gap-1 font-mono text-[10.5px] text-faint hover:text-text">
               <CaretDown size={10} className={open ? "rotate-180" : ""} />
@@ -103,6 +109,32 @@ function StepRow({ s, onHighlight }: { s: Step; onHighlight: (s: Step) => void }
   );
 }
 
+/** Where this step sat in the run, LangSmith-style: offset and duration on one timeline. */
+function Waterfall({ start, ms, total }: { start: number; ms?: number; total: number }) {
+  const left = Math.min(100, (start / total) * 100);
+  const width = ms == null ? 2 : Math.max(1.5, (ms / total) * 100);
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <div className="relative h-1 flex-1 bg-surface-3">
+        <div className={`absolute inset-y-0 ${ms == null ? "skeleton" : "bg-accent/70"}`} style={{ left: `${left}%`, width: `${Math.min(100 - left, width)}%` }} />
+      </div>
+      <span className="w-12 shrink-0 text-right font-mono text-[10px] text-faint">{ms == null ? "…" : ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`}</span>
+    </div>
+  );
+}
+
+/** Pull "echo: 5 sources, 1 origin" findings out of the independence checks. */
+function caught(run: Run, titles: Map<string, string>) {
+  const out: { id: string; title: string; sources: number; origins: number }[] = [];
+  for (const s of run.steps) {
+    if (s.tool !== "inspect_belief" || !s.summary) continue;
+    const m = s.summary.match(/echo: (\d+) sources?, (\d+) origins?/);
+    const id = String(s.args.belief_id ?? "");
+    if (m && !out.some((o) => o.id === id)) out.push({ id, title: titles.get(id) ?? id, sources: +m[1], origins: +m[2] });
+  }
+  return out;
+}
+
 function RunCard({
   run,
   kind,
@@ -119,10 +151,11 @@ function RunCard({
   const [stepsOpen, setStepsOpen] = useState(kind === "echo");
   const echo = kind === "echo";
   return (
-    <div className={`rounded-xl border ${echo ? "border-accent/35 bg-surface" : "border-line bg-surface/60"}`}>
+    <div className={`rounded-xl border bg-surface ${echo ? "border-accent/40 shadow-card" : "border-line"}`}>
       <div className="flex items-center justify-between px-4 pt-3.5">
         <div className="flex items-center gap-2">
-          <span className={`text-[12px] font-semibold ${echo ? "text-accent" : "text-muted"}`}>
+          <span className={`size-1.5 ${echo ? "bg-accent" : "bg-faint"}`} />
+          <span className={`text-[12.5px] font-semibold ${echo ? "text-text" : "text-muted"}`}>
             {echo ? "Echo memory" : "Plain memory"}
           </span>
           <span className="text-[11px] text-faint">{echo ? "counts independent origins" : "counts mentions"}</span>
@@ -134,9 +167,26 @@ function RunCard({
       {stepsOpen && run.steps.length > 0 && (
         <ol className="mt-3 space-y-3 border-b border-line px-4 pb-3.5">
           {run.steps.map((s, i) => (
-            <StepRow key={i} s={s} onHighlight={onHighlight} />
+            <StepRow key={i} s={s} onHighlight={onHighlight} run={run} />
           ))}
         </ol>
+      )}
+      {echo && run.done && caught(run, titles).length > 0 && (
+        <div className="mx-4 mt-3.5 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2.5">
+          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-accent">What Echo caught</div>
+          <ul className="mt-1.5 space-y-1">
+            {caught(run, titles).map((c) => (
+              <li key={c.id}>
+                <button onClick={() => onCite(c.id)} className="group flex w-full items-baseline gap-2 text-left text-[12.5px]">
+                  <span className="min-w-0 flex-1 truncate text-text group-hover:underline">{c.title}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-muted">
+                    {c.sources} sources → <span className="text-accent">{c.origins}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="px-4 py-3.5">
         {run.notice && <div className="mb-2 flex items-center gap-1.5 text-[11.5px] text-contested"><Warning size={12} /> {run.notice}</div>}
@@ -172,7 +222,9 @@ export function AskPanel({
   titles,
   onCite,
   onHighlight,
+  intro,
 }: {
+  intro?: React.ReactNode;
   turns: Turn[];
   busy: boolean;
   suggested: string[];
@@ -195,13 +247,16 @@ export function AskPanel({
     <div className="flex h-full min-h-0 flex-col">
       <div className="scrollbar-thin min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4">
         {turns.length === 0 && (
-          <div className="pt-2">
-            <h2 className="font-display text-xl font-semibold tracking-tight">Ask the research agent</h2>
+          <div className="space-y-5 pt-1">
+            {intro}
+            <div>
+            <h2 className="display text-[24px] leading-tight">Ask the research agent</h2>
             <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
               The same agent answers twice: once with Echo, once with a plain memory that counts mentions. Watch the graph as it
               works.
             </p>
-            <div className="mt-5 space-y-2">
+            </div>
+            <div className="space-y-2">
               {suggested.map((s) => (
                 <button
                   key={s}
@@ -224,7 +279,7 @@ export function AskPanel({
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="space-y-3"
             >
-              <div className="ml-6 rounded-xl bg-surface-3 px-3.5 py-2.5 text-[13.5px] text-text">{t.question}</div>
+              <div className="ml-8 rounded-xl rounded-tr-sm bg-text px-3.5 py-2.5 text-[13.5px] text-bg">{t.question}</div>
               <RunCard run={t.echo} kind="echo" titles={titles} onCite={onCite} onHighlight={onHighlight} />
               {t.plain && <RunCard run={t.plain} kind="plain" titles={titles} onCite={onCite} onHighlight={onHighlight} />}
             </motion.div>
@@ -274,7 +329,7 @@ export function AskPanel({
             type="submit"
             disabled={busy || !q.trim()}
             aria-label="Ask"
-            className="grid size-8 place-items-center rounded-lg bg-accent text-accent-ink transition-transform active:scale-95 disabled:opacity-40"
+            className="grid size-8 place-items-center rounded-lg bg-text text-bg transition-transform active:scale-95 disabled:opacity-40"
           >
             <ArrowUp size={16} weight="bold" />
           </button>

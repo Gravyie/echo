@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
-const display = Space_Grotesk({ variable: "--font-space-grotesk", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const plex = IBM_Plex_Sans({ variable: "--font-plex", subsets: ["latin"], weight: ["400", "500", "600"] });
-const mono = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["400", "500", "600"] });
+const display = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], style: ["normal", "italic"], weight: ["300", "400", "500"] });
+const sans = Geist({ variable: "--font-geist", subsets: ["latin"] });
+const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Echo: agent memory that counts origins, not mentions",
@@ -16,10 +16,16 @@ export const metadata: Metadata = {
   },
 };
 
+// Apply a stored theme choice before first paint (no flash).
+const THEME_SCRIPT = `try{var t=localStorage.getItem("echo.theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${plex.variable} ${mono.variable} h-full antialiased`}>
-      <body className="grain min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="grain flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

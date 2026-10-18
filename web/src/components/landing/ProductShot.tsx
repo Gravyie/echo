@@ -3,11 +3,12 @@
 import Image from "next/image";
 import { useRef } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import studio from "@/assets/studio.webp";
 
 const CALLOUTS = [
   { n: "01", title: "The agent shows its work", body: "Every tool call streams in with the Cypher it ran and how long FalkorDB took." },
-  { n: "02", title: "The graph follows along", body: "Whatever the agent inspects lights up, from each echo back to the post it came from." },
-  { n: "03", title: "Proof, not a score", body: "Six sources, one origin, two against. Even the plain agent's own note is shown with zero weight." },
+  { n: "02", title: "Lineage you can read", body: "Origins on the left, the copies that carried the claim in the middle, the belief on the right. Every edge shows its evidence." },
+  { n: "03", title: "A guided first run", body: "Five steps, each with a button that does it for you: ask, open the belief, trace it, retract the planted post, try the loop." },
 ];
 
 /** The studio in a browser frame that tilts flat as it scrolls into view. */
@@ -26,18 +27,17 @@ export function ProductShot() {
           aria-hidden
           className="absolute -inset-x-10 -top-10 bottom-1/3 -z-10 rounded-[40px] bg-[radial-gradient(60%_60%_at_50%_30%,var(--accent-soft),transparent)] blur-2xl"
         />
-        <div className="overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-[0_40px_120px_-40px_rgba(0,0,0,0.75)]">
+        <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-[0_40px_100px_-40px_rgb(18_18_18/0.45)]">
           <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-            <span className="size-2.5 rounded-full bg-line-strong" />
-            <span className="size-2.5 rounded-full bg-line-strong" />
-            <span className="size-2.5 rounded-full bg-line-strong" />
+            <span className="size-2 rounded-full bg-line-strong" />
+            <span className="size-2 rounded-full bg-line-strong" />
+            <span className="size-2 rounded-full bg-line-strong" />
             <span className="mx-auto rounded-md bg-surface-2 px-3 py-0.5 font-mono text-[11px] text-faint">echo / studio</span>
           </div>
           <Image
-            src="/shots/studio.webp"
-            alt="Echo studio: the agent's tool calls on the left, the lineage graph in the middle, and the belief inspector showing 6 sources collapsing into 1 origin"
-            width={2880}
-            height={1800}
+            src={studio}
+            placeholder="blur"
+            alt="Echo studio: the agent's tool calls on the left and the lineage of a disputed belief, with five copies tracing back to one planted post"
             sizes="(min-width: 1280px) 1216px, 100vw"
             className="h-auto w-full"
             priority={false}
@@ -52,10 +52,10 @@ export function ProductShot() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.6 }}
             transition={{ duration: 0.6, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="border-t border-line pt-5"
+            className="border-t border-line pt-6"
           >
-            <div className="font-mono text-xs text-accent">{c.n}</div>
-            <h3 className="mt-2 font-display text-lg font-medium">{c.title}</h3>
+            <div className="font-mono text-[11px] text-faint">{c.n}</div>
+            <h3 className="display mt-2 text-[22px] leading-tight">{c.title}</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">{c.body}</p>
           </motion.li>
         ))}

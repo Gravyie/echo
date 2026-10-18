@@ -132,8 +132,8 @@ export interface WorkspaceInfo {
 export type AgentEvent =
   | { type: "start"; mode: string; llm: boolean }
   | { type: "notice"; text: string }
-  | { type: "step"; tool: string; args: Record<string, unknown> }
-  | { type: "step_result"; tool: string; summary: string; highlight: { nodes?: string[]; edges?: string[][]; focus?: string }; cypher: CypherEntry[] }
+  | { type: "step"; tool: string; args: Record<string, unknown>; at?: number }
+  | { type: "step_result"; tool: string; summary: string; highlight: { nodes?: string[]; edges?: string[][]; focus?: string }; cypher: CypherEntry[]; at?: number }
   | { type: "answer"; text: string; beliefs: string[]; episode: string; note: string | null; seconds: number }
   | { type: "error"; text: string };
 

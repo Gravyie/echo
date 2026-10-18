@@ -8,7 +8,7 @@ Echo is a memory layer for AI agents, built on [FalkorDB](https://falkordb.com).
 
 Built for **Graph Hacks 2026** (WeMakeDevs × FalkorDB). Tracks: **02 Agent Memory and Coordination** (core) and **01 Agents That Act on Connected Data** (the agent's tools are graph queries and graph algorithms).
 
-![Echo studio: the agent inspects a belief and the graph lights up its lineage](docs/inspector.png)
+![Echo studio: the agent run on the left, and the lineage of a disputed belief: five copies tracing back to one planted post](docs/lineage.png)
 
 ---
 
@@ -84,7 +84,9 @@ Take the graph away and Echo cannot count origins. Every verdict is a traversal,
 
 **Studio** (`/studio`): every visitor gets a private FalkorDB graph cloned from a scenario.
 
+- **Start here.** A five-step guide walks a first-time visitor through the story, with a button that does each step.
 - **Ask the agent.** The same research agent answers twice, once with Echo and once with a plain mention-counting memory. Each tool call streams in with the Cypher it ran, and the graph lights up the lineage it is inspecting. Answers cite sources as clickable chips.
+- **Lineage view.** A layered diagram of one belief: origins on the left, the copies and citations that carried the claim, the belief on the right, with the evidence on every edge.
 - **Inspect a belief.** Sources → origins, origin clusters, why sources collapsed ("they trace back to…", "same affiliate tag"), the hop-by-hop path with evidence, and the Cypher behind the verdict.
 - **Retract a source.** Every dependent belief is rescored live, with a before/after diff.
 - **Load-bearing origins, content rings, Cypher console, add your own source** (URL or text; claims are extracted by the LLM and matched to existing beliefs).
@@ -123,7 +125,7 @@ flowchart LR
 ```
 
 - **Backend** (`backend/`): Python 3.12, FastAPI, `falkordb` client, fastembed (local ONNX embeddings), scikit-learn (paraphrase alignment), trafilatura (page extraction), any OpenAI-compatible LLM (Groq by default). With no LLM key, a deterministic built-in reasoner answers, so the demo never breaks.
-- **Frontend** (`web/`): Next.js 16, Tailwind v4, Motion, react-force-graph.
+- **Frontend** (`web/`): Next.js 16, Tailwind v4, Motion, react-force-graph (the map), React Flow + dagre (the lineage view). Hero imagery: details of J. W. Waterhouse, *Echo and Narcissus* (1903, public domain).
 
 ## Run it locally
 

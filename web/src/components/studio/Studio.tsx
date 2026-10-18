@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowCounterClockwise, ChatCircleText, Code, Plus, WarningCircle } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, ChatCircleText, Code, Graph as GraphIcon, Plus, TreeStructure, WarningCircle } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Wordmark } from "../Brand";
+import { Mark, ThemeToggle } from "../Brand";
+import Link from "next/link";
 import {
   API,
   api,
@@ -20,6 +21,8 @@ import {
 } from "@/lib/api";
 import { AskPanel, applyEvent, type Step, type Turn } from "./AskPanel";
 import { GraphView, type Highlight } from "./GraphView";
+import { Guide, GuidePill, type GuideKey, type GuideStep } from "./Guide";
+import { LineageView } from "./LineageView";
 import { BeliefInspector, SourceInspector } from "./Inspector";
 import { Overview } from "./Overview";
 import { CypherConsole, IngestPanel } from "./Tools";
@@ -68,6 +71,33 @@ export default function Studio() {
   const [showOwners, setShowOwners] = useState(false);
   const [showAgent, setShowAgent] = useState(true);
   const turnId = useRef(0);
+  const [view, setView] = useState<"map" | "lineage">("map");
+  // The lineage view stays on the last belief opened, even while a source is inspected (e.g. right after a retraction).
+  const [lineageId, setLineageId] = useState<string | null>(null);
+  const [lineage, setLineage] = useState<Report | null>(null);
+  const pendingTop = useRef(false);
+  const [guideOpen, setGuideOpen] = useState(true);
+  const [done, setDone] = useState<Record<GuideKey, boolean>>({ asked: false, opened: false, lineage: false, retracted: false, loop: false });
+
+  useEffect(() => {
+    try {
+      const v = JSON.parse(storageGet("echo.guide") ?? "null");
+      if (v) setDone((d) => ({ ...d, ...v }));
+    } catch {}
+    if (storageGet("echo.guide.hidden") === "1") setGuideOpen(false);
+  }, []);
+  const mark = useCallback((k: GuideKey) => {
+    setDone((d) => {
+      if (d[k]) return d;
+      const n = { ...d, [k]: true };
+      storageSet("echo.guide", JSON.stringify(n));
+      return n;
+    });
+  }, []);
+  const toggleGuide = (open: boolean) => {
+    setGuideOpen(open);
+    storageSet("echo.guide.hidden", open ? "0" : "1");
+  };
 
   // ---------------------------------------------------------------- bootstrap
 
@@ -96,6 +126,8 @@ export default function Studio() {
       setTurns([]);
       setHighlight(null);
       setLastRescore(null);
+      setLineageId(null);
+      setLineage(null);
       const key = `echo.ws.${scenario}`;
       let w = storageGet(key);
       try {
@@ -125,6 +157,7 @@ export default function Studio() {
         if (cancelled) return;
         setWs(w);
         await refresh(w);
+        if (scenario === "citogenesis") mark("loop");
       } catch {
         if (!cancelled) setFatal(`Can't reach the Echo API at ${API}.`);
       } finally {
@@ -134,7 +167,7 @@ export default function Studio() {
     return () => {
       cancelled = true;
     };
-  }, [scenario, refresh]);
+  }, [scenario, refresh, mark]);
 
   const switchScenario = (s: string) => {
     if (s === scenario) return;
@@ -158,6 +191,9 @@ export default function Studio() {
         if (cancelled) return;
         setReport(r);
         setSource(null);
+        setLineageId(r.id);
+        setLineage(r);
+        if (r.verdict.echo) mark("opened");
         const nodes = new Set<string>([r.id]);
         r.verdict.clusters.forEach((c) => [...c.members, ...c.roots, ...c.dead_roots].forEach((x) => nodes.add(x)));
         const edges = new Set<string>();
@@ -184,7 +220,21 @@ export default function Studio() {
     return () => {
       cancelled = true;
     };
-  }, [ws, sel, graph.edges]);
+  }, [ws, sel, graph.edges, mark]);
+
+  useEffect(() => {
+    if (view === "lineage" && lineage) mark("lineage");
+  }, [view, lineage, mark]);
+
+  // Keep the pinned lineage fresh when the graph changes (new notes, retractions).
+  useEffect(() => {
+    if (!ws || !lineageId) return;
+    let cancelled = false;
+    api.belief(ws, lineageId).then((r) => !cancelled && setLineage(r)).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [ws, lineageId, graph]);
 
   const selectNode = (n: GraphNode | null) => {
     if (!n) {
@@ -252,6 +302,7 @@ export default function Studio() {
       }).catch((err) => update(mode, (r) => ({ ...r, error: String(err.message ?? err), done: true })));
     await Promise.all([runMode("echo"), compare ? runMode("plain") : Promise.resolve()]);
     setBusy(false);
+    mark("asked");
     refresh(ws).catch(() => undefined);
   };
 
@@ -263,6 +314,7 @@ export default function Studio() {
       setLastRescore({ source: id, ms: r.ms, rescored: r.rescored });
       setSel({ kind: "source", id });
       await refresh(ws);
+      if (!restore) mark("retracted");
       const moved = r.rescored.filter((x) => x.before.status !== x.after.status).length;
       flash(
         `${restore ? "Restored" : "Retracted"} ${titles.get(id) ?? id}. ${r.rescored.length} beliefs rescored in ${r.ms} ms, ${moved} changed status.`,
@@ -293,18 +345,90 @@ export default function Studio() {
 
   // ---------------------------------------------------------------- render
 
+  const scenarioTabs = [...scenarios.map((s) => ({ id: s.id, title: s.title })), { id: BLANK, title: "Your memory" }];
+
+  // The belief with the widest gap between sources and origins: the one the story is about.
+  const topEcho = [...beliefs]
+    .filter((b) => b.echo)
+    .sort((a, b) => (b.sources ?? 0) - (b.origins ?? 0) - ((a.sources ?? 0) - (a.origins ?? 0)))[0];
+  const openTop = () => {
+    if (topEcho) setSel({ kind: "belief", id: topEcho.id });
+  };
+  const halcyon = scenarios.find((x) => x.id === "halcyon");
+  const guideSteps: GuideStep[] = [
+    {
+      key: "asked",
+      title: "Ask the agent",
+      body: "It answers twice on the same sources: once with a plain memory that counts mentions, once with Echo.",
+      cta: "Ask the hospital question",
+      disabled: busy || loading,
+      run: () => {
+        if (scenario !== "halcyon") switchScenario("halcyon");
+        else onAsk(halcyon?.question ?? suggested[0]);
+      },
+    },
+    {
+      key: "opened",
+      title: "Open the disputed belief",
+      body: "Five pages call Halcyon the safest gateway. See how many independent origins they really have.",
+      cta: "Open it",
+      disabled: !topEcho,
+      run: openTop,
+    },
+    {
+      key: "lineage",
+      title: "Trace its lineage",
+      body: "Origins on the left, the copies that carried the claim in the middle, the belief on the right. Every edge shows its evidence.",
+      cta: "Show the lineage",
+      run: () => {
+        if (!sel || sel.kind !== "belief") openTop();
+        setView("lineage");
+      },
+    },
+    {
+      key: "retracted",
+      title: "Retract the planted post",
+      body: "Say your security team flags it. Every belief built on it is rescored in the same request.",
+      cta: "Retract it",
+      disabled: busy || !scen?.retract_hint,
+      run: () => scen?.retract_hint && retract(scen.retract_hint),
+    },
+    {
+      key: "loop",
+      title: "Try the circular citation",
+      body: "No attacker this time: a wiki cites a newspaper that copied the wiki. Echo counts the loop once.",
+      cta: "Open that scenario",
+      run: () => {
+        pendingTop.current = true;
+        switchScenario("citogenesis");
+      },
+    },
+  ];
+  // The lineage diagram carries the verdict itself, so it gets the inspector's column while a belief is open.
+  const wide = view === "lineage" && !!lineage && sel?.kind !== "source";
+  // After the guide switches scenario, open that scenario's headline belief in the lineage view.
+  useEffect(() => {
+    if (pendingTop.current && !loading && topEcho) {
+      pendingTop.current = false;
+      setSel({ kind: "belief", id: topEcho.id });
+      setView("lineage");
+    }
+  }, [loading, topEcho]);
+  const doneCount = guideSteps.filter((g) => done[g.key]).length;
+  const guide = <Guide steps={guideSteps} done={done} onClose={() => toggleGuide(false)} />;
+
   if (fatal) {
     return (
       <div className="grid min-h-[100dvh] place-items-center p-6">
         <div className="max-w-md rounded-2xl border border-line bg-surface p-8">
           <WarningCircle size={28} className="text-bad" />
-          <h1 className="mt-4 font-display text-xl font-semibold">{fatal}</h1>
+          <h1 className="display mt-4 text-2xl">{fatal}</h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
             Start the backend with <code className="font-mono text-text">docker compose up</code>, or set{" "}
             <code className="font-mono text-text">NEXT_PUBLIC_API_URL</code> to a running Echo API. A free-tier host may also be
             waking up, which takes about a minute.
           </p>
-          <button onClick={() => window.location.reload()} className="mt-6 rounded-full bg-accent px-5 py-2 text-[13px] font-medium text-accent-ink">
+          <button onClick={() => window.location.reload()} className="mt-6 rounded-md bg-text px-4 py-2 text-[13px] font-medium text-bg">
             Try again
           </button>
         </div>
@@ -312,24 +436,28 @@ export default function Studio() {
     );
   }
 
-  const scenarioTabs = [...scenarios.map((s) => ({ id: s.id, title: s.title })), { id: BLANK, title: "Your memory" }];
-
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden">
-      <header className="flex h-14 shrink-0 items-center gap-4 border-b border-line px-4">
-        <Wordmark />
-        <div className="scrollbar-thin flex gap-1 overflow-x-auto rounded-full bg-surface-2 p-1">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <Mark size={20} />
+          <span className="display text-[21px] leading-none">Echo</span>
+        </Link>
+        <span className="text-line-strong">/</span>
+        <div className="scrollbar-thin flex gap-0.5 overflow-x-auto rounded-lg border border-line bg-bg p-0.5">
           {scenarioTabs.map((s) => (
             <button
               key={s.id}
               onClick={() => switchScenario(s.id)}
-              className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] transition-colors ${scenario === s.id ? "bg-surface-3 text-text" : "text-faint hover:text-muted"}`}
+              className={`shrink-0 rounded-md px-2.5 py-1 text-[12.5px] transition-colors ${
+                scenario === s.id ? "bg-surface text-text shadow-card" : "text-faint hover:text-muted"
+              }`}
             >
               {s.title}
             </button>
           ))}
         </div>
-        <div className="ml-auto hidden items-center gap-5 font-mono text-[11.5px] text-faint xl:flex">
+        <div className="ml-auto hidden items-center gap-4 font-mono text-[11px] text-faint 2xl:flex">
           {stats && (
             <>
               <span><span className="text-text">{stats.sources}</span> sources</span>
@@ -338,24 +466,35 @@ export default function Studio() {
               <span><span className="text-text">{stats.lineage_edges}</span> lineage edges</span>
             </>
           )}
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 2xl:ml-3">
+          <span className="hidden lg:block">
+            <GuidePill count={doneCount} total={guideSteps.length} onClick={() => toggleGuide(!guideOpen)} />
+          </span>
           {health && (
-            <span className="rounded-full border border-line px-2 py-0.5" title={health.llm ? "Agent runs on an LLM with tool calling" : "No LLM key configured; the built-in reasoner answers"}>
+            <span
+              className="hidden rounded-md border border-line px-2 py-1.5 font-mono text-[11px] text-muted xl:block"
+              title={health.llm ? "Agent runs on an LLM with tool calling" : "No LLM key configured; the built-in reasoner answers"}
+            >
               {health.llm ? health.llm_model : "built-in reasoner"}
             </span>
           )}
+          <ThemeToggle />
+          <button
+            onClick={reset}
+            disabled={busy || !ws}
+            className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] text-muted hover:text-text disabled:opacity-40"
+          >
+            <ArrowCounterClockwise size={13} /> Reset
+          </button>
         </div>
-        <button
-          onClick={reset}
-          disabled={busy || !ws}
-          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[12px] text-muted hover:text-text disabled:opacity-40 xl:ml-0"
-        >
-          <ArrowCounterClockwise size={13} /> Reset
-        </button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[400px_minmax(0,1fr)_380px] lg:overflow-hidden">
+      <div className={`grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden ${
+          wide ? "lg:grid-cols-[380px_minmax(0,1fr)]" : "lg:grid-cols-[380px_minmax(0,1fr)_370px]"
+        }`}>
         {/* left: agent + tools */}
-        <aside className="order-2 flex min-h-[70dvh] flex-col border-line lg:order-1 lg:min-h-0 lg:border-r">
+        <aside className="order-2 flex min-h-[70dvh] flex-col border-line bg-surface lg:order-1 lg:min-h-0 lg:border-r">
           <div className="flex shrink-0 gap-1 border-b border-line px-3 pt-3">
             {(
               [
@@ -385,6 +524,7 @@ export default function Studio() {
                 titles={titles}
                 onCite={(id) => setSel(id.startsWith("b:") ? { kind: "belief", id } : { kind: "source", id })}
                 onHighlight={highlightStep}
+                intro={guideOpen ? guide : null}
               />
             )}
             {left === "ingest" && ws && (
@@ -401,17 +541,24 @@ export default function Studio() {
         </aside>
 
         {/* center: graph */}
-        <main className="relative order-1 h-[58dvh] min-h-[360px] overflow-hidden lg:order-2 lg:h-auto">
-          <div className="absolute inset-0 [background-image:radial-gradient(var(--line)_1px,transparent_1px)] [background-size:22px_22px]" />
+        <main className="relative order-1 h-[62dvh] min-h-[380px] overflow-hidden bg-bg lg:order-2 lg:h-auto">
+          {view === "map" && <div className="dots absolute inset-0 opacity-70" />}
           {loading ? (
             <div className="absolute inset-0 grid place-items-center">
               <div className="text-center">
-                <div className="skeleton mx-auto size-16 rounded-full" />
+                <div className="skeleton mx-auto size-14 rounded-full" />
                 <div className="mt-4 font-mono text-[12px] text-faint">
                   {waking ? "Waking the API. Free hosting sleeps when idle; this takes up to a minute." : "Cloning a private FalkorDB graph for you"}
                 </div>
               </div>
             </div>
+          ) : view === "lineage" ? (
+            <LineageView
+              report={lineage}
+              beliefs={beliefs}
+              onPick={(id) => setSel({ kind: "belief", id })}
+              onSelectSource={(id) => setSel({ kind: "source", id })}
+            />
           ) : (
             <GraphView
               nodes={graph.nodes}
@@ -424,25 +571,54 @@ export default function Studio() {
               fitKey={ws ?? ""}
             />
           )}
-          <Legend showOwners={showOwners} setShowOwners={setShowOwners} showAgent={showAgent} setShowAgent={setShowAgent} />
-          {highlight && (
-            <button
-              onClick={() => {
-                setHighlight(null);
-                setSel(null);
-              }}
-              className="absolute right-4 top-4 rounded-full border border-line bg-surface/90 px-3 py-1 text-[11.5px] text-muted backdrop-blur hover:text-text"
-            >
-              Clear focus
-            </button>
+
+          <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
+            <div className="flex rounded-lg border border-line bg-surface p-0.5 shadow-card">
+              {(
+                [
+                  ["map", "Map", GraphIcon],
+                  ["lineage", "Lineage", TreeStructure],
+                ] as const
+              ).map(([k, label, Icon]) => (
+                <button
+                  key={k}
+                  onClick={() => setView(k)}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
+                    view === k ? "bg-text text-bg" : "text-muted hover:text-text"
+                  }`}
+                >
+                  <Icon size={13} /> {label}
+                </button>
+              ))}
+            </div>
+            {highlight && view === "map" && (
+              <button
+                onClick={() => {
+                  setHighlight(null);
+                  setSel(null);
+                }}
+                className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[11.5px] text-muted shadow-card hover:text-text"
+              >
+                Clear focus
+              </button>
+            )}
+          </div>
+
+          {view === "map" && <Legend showOwners={showOwners} setShowOwners={setShowOwners} showAgent={showAgent} setShowAgent={setShowAgent} />}
+
+          {guideOpen && !loading && turns.length > 0 && (
+            <div className="absolute bottom-3 left-3 z-10 w-[min(440px,calc(100%-1.5rem))]">
+              <Guide steps={guideSteps} done={done} onClose={() => toggleGuide(false)} compact />
+            </div>
           )}
+
           <AnimatePresence>
             {toast && (
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                className="absolute bottom-4 left-1/2 w-[min(560px,calc(100%-2rem))] -translate-x-1/2 rounded-xl border border-line-strong bg-surface px-4 py-3 text-[12.5px] text-text shadow-[0_12px_40px_rgb(0_0_0/0.35)]"
+                exit={{ opacity: 0, y: -8 }}
+                className="absolute left-1/2 top-14 z-20 w-[min(520px,calc(100%-2rem))] -translate-x-1/2 rounded-lg border border-line bg-text px-4 py-3 text-[12.5px] text-bg shadow-card"
                 role="status"
               >
                 {toast}
@@ -452,7 +628,7 @@ export default function Studio() {
         </main>
 
         {/* right: inspector / overview */}
-        <aside className="order-3 min-h-[60dvh] border-line lg:min-h-0 lg:border-l">
+        <aside className={`order-3 min-h-[60dvh] border-line bg-surface lg:min-h-0 lg:border-l ${wide ? "lg:hidden" : ""}`}>
           <div className="scrollbar-thin h-full overflow-y-auto">
             {sel?.kind === "belief" && report ? (
               <BeliefInspector report={report} onSelectSource={(id) => setSel({ kind: "source", id })} onBack={() => setSel(null)} />
@@ -519,9 +695,9 @@ function Legend({
     </button>
   );
   return (
-    <div className="pointer-events-none absolute inset-x-3 bottom-3 hidden md:flex">
-      <div className="pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-line bg-surface/85 px-3 py-2 text-[11px] text-muted backdrop-blur">
-        {item(<span className="size-2.5 rounded-full bg-accent shadow-[0_0_8px_var(--accent)]" />, "Origin")}
+    <div className="pointer-events-none absolute right-3 top-3 z-10 hidden max-w-[calc(100%-240px)] justify-end xl:flex">
+      <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5 rounded-lg border border-line bg-surface/90 px-3 py-1.5 text-[11px] text-muted shadow-card backdrop-blur">
+        {item(<span className="size-2.5 rounded-full bg-accent" />, "Origin")}
         {item(<span className="size-2.5 rounded-full border border-muted" />, "Source")}
         {item(<span className="size-2.5 border border-agent" />, "Agent note")}
         {item(<span className="size-2.5 rounded-[3px] border border-ok bg-ok/20" />, "Belief")}

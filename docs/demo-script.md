@@ -1,6 +1,6 @@
 # Demo video (about 2 minutes)
 
-Record at 1440×900 in the studio, dark mode. Open a fresh tab or click **Reset** first so the counts start at 5.
+Record at 1440×900. Open a fresh tab or click **Reset** first so the counts start at 5. The studio's **Start here** guide has a button for every step below, in order: ask, open the disputed belief, trace its lineage, retract the planted post, try the circular citation. Clicking those buttons is the whole demo.
 
 | Time | On screen | Say |
 |---|---|---|
@@ -10,7 +10,7 @@ Record at 1440×900 in the studio, dark mode. Open a fresh tab or click **Reset*
 | 0:30 | Point at the plain answer | "Plain memory says Halcyon. Five sources confirm it." |
 | 0:38 | Point at the Echo steps, expand one Cypher query | "Echo's tools are graph queries. It recalls with the vector index, then checks independence with a lineage traversal. You can see the Cypher and the milliseconds." |
 | 0:50 | Echo answer, then click the disputed belief in the right panel | "Echo picks Corvid and says why: the 'safest' claim is six sources but one origin, with two independent origins against it." |
-| 1:00 | Inspector: scroll the collapse list and the path | "Here's the proof: verbatim copy, hyperlink, same affiliate tag, a forum post that links to a copy. And the plain agent's own note, which plain memory now counts as a sixth source, carries zero weight here." |
+| 1:00 | Click **Show the lineage**: origins left, copies middle, the belief right | "Here's the proof: verbatim copy, hyperlink, same affiliate tag, a forum post that links to a copy. And the plain agent's own note, which plain memory now counts as a sixth source, carries zero weight here." |
 | 1:15 | Click the origin, then **Retract this source** | "Say the security team flags that post. Retract it." |
 | 1:20 | Toast and rescore diff | "Every belief built on it is rescored in the same request, here in about 15 milliseconds. Disputed becomes retracted, one origin becomes zero." |
 | 1:30 | **Load-bearing** tab, then **Rings** tab | "PageRank shows which origins hold up the most beliefs. Label propagation finds the content ring: sites tied together by copying and a shared analytics ID." |

@@ -6,9 +6,10 @@ import { CypherBlock } from "../CypherBlock";
 
 const STEPS = [
   {
+    n: "01",
     title: "Link",
     body:
-      "Every source Echo stores gets edges back toward where it came from. Hyperlinks and shared CVE or DOI identifiers become CITES. Verbatim passages, paraphrased sentences and shared precise figures become COPIED_FROM. Domains, authors, affiliate tags and analytics IDs become owners. The agent's own notes are DERIVED_FROM what it read.",
+      "Every source gets edges back toward where it came from. Hyperlinks and shared CVE or DOI identifiers become CITES. Verbatim passages, paraphrased sentences and shared precise figures become COPIED_FROM. Domains, authors, affiliate tags and analytics IDs become owners. The agent's own notes are DERIVED_FROM what it read. Each edge keeps its evidence.",
     code: `// a new page that reuses two precise figures
 MATCH (a:Source {id:$copier}), (b:Source {id:$original})
 MERGE (a)-[r:COPIED_FROM]->(b)
@@ -16,24 +17,24 @@ SET r.method = 'shared-specifics',
     r.evidence = 'same precise figures: 1,284, 99.982%'`,
   },
   {
+    n: "02",
     title: "Collapse",
     body:
-      "To judge a belief, Echo walks each supporting source up its lineage in one variable-length traversal. Sources that share an ancestor or an owner fold into one origin cluster. Retracted nodes block the walk. A citation loop counts as a single origin.",
-    code: `MATCH (b:Belief {id:$id})<-[:SUPPORTS]-(:Observation)
-      <-[:YIELDED]-(s:Source)
+      "To judge a belief, Echo walks every supporting source up its lineage in one variable-length traversal. Sources that share an ancestor or an owner fold into one origin. A retracted source blocks the walk, and a citation loop counts once.",
+    code: `MATCH (s:Source) WHERE s.id IN $supporting
 MATCH (s)-[:CITES|COPIED_FROM|DERIVED_FROM*0..8]->(a:Source)
 WITH DISTINCT a
-OPTIONAL MATCH (a)-[:CITES|COPIED_FROM|DERIVED_FROM]->(up)
+OPTIONAL MATCH (a)-[:CITES|COPIED_FROM|DERIVED_FROM]->(up:Source)
 OPTIONAL MATCH (a)-[:PUBLISHED_BY]->(w:Owner)
-RETURN a.id, collect(DISTINCT up.id), collect(DISTINCT w.id)`,
+RETURN a.id, a.retracted, collect(DISTINCT up.id), collect(DISTINCT w.id)`,
   },
   {
+    n: "03",
     title: "Decide",
     body:
-      "Confidence comes from independent origins, scored with the same rule a plain memory uses on raw mentions. Only two or more origins make a belief VERIFIED. Retract a source and every belief downstream of it is rescored in the same request.",
-    code: `// retraction: rescore only what leaned on the source
-MATCH (s:Source {id:$id}) SET s.retracted = true
-WITH s
+      "Confidence comes from independent origins, scored with the same rule a plain memory applies to raw mentions. Only two or more origins make a belief VERIFIED. Retract a source and every belief downstream of it is rescored in the same request.",
+    code: `// retraction: find every belief that leaned on the source
+MATCH (s:Source) WHERE s.id IN $retracted
 MATCH (s)<-[:CITES|COPIED_FROM|DERIVED_FROM*0..8]-(d:Source)
       -[:YIELDED]->(:Observation)-[:SUPPORTS|CONTRADICTS]->(b:Belief)
 RETURN DISTINCT b.id`,
@@ -62,8 +63,8 @@ export function HowItWorks() {
         {STEPS.map((s, i) => (
           <Step key={s.title} i={i} onActive={setActive}>
             <div className={`transition-opacity duration-500 ${active === i ? "opacity-100" : "md:opacity-35"}`}>
-              <div className="font-mono text-sm text-accent">{s.title.toLowerCase()}()</div>
-              <h3 className="mt-3 font-display text-3xl font-semibold tracking-tight md:text-4xl">{s.title}</h3>
+              <div className="font-mono text-xs text-accent">{s.n}</div>
+              <h3 className="display mt-2 text-4xl md:text-5xl">{s.title}</h3>
               <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-muted">{s.body}</p>
               <div className="mt-6 md:hidden">
                 <CypherBlock code={s.code} />

@@ -181,7 +181,8 @@ class Agent:
 
     def run(self, question: str) -> Iterator[dict[str, Any]]:
         t0 = time.time()
-        yield {"type": "start", "mode": self.mode, "llm": llm.available()}
+        yield {"type": "start", "mode": self.mode, "llm": llm.available(), "at": 0}
+        stamp = lambda ev: {**ev, "at": int((time.time() - t0) * 1000)}  # noqa: E731  server-side timeline for the UI
         answer = None
         if llm.available():
             try:
@@ -189,7 +190,7 @@ class Agent:
                     if ev["type"] == "answer":
                         answer = ev["text"]
                     else:
-                        yield ev
+                        yield stamp(ev)
             except Exception as e:
                 log.warning("agent LLM loop failed, falling back: %s", e)
                 yield {"type": "notice", "text": "LLM unavailable, switched to Echo's built-in reasoner."}
@@ -198,7 +199,7 @@ class Agent:
                 if ev["type"] == "answer":
                     answer = ev["text"]
                 else:
-                    yield ev
+                    yield stamp(ev)
         produced = self._remember(question, answer)
         eid = self.mem.record_episode(f"{self.mode}-agent", question, answer, self.mode, self.recalled, produced)
         yield {"type": "answer", "text": answer, "beliefs": self.recalled, "episode": eid, "note": produced,

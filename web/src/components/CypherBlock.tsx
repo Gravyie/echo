@@ -41,7 +41,7 @@ export function highlightCypher(code: string) {
 
 export function CypherBlock({ code, title, compact, lang = "FalkorDB · Cypher" }: { code: string; title?: string; compact?: boolean; lang?: string }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+    <div className={`overflow-hidden rounded-xl border border-line bg-surface ${compact ? "" : "ink shadow-card"}`}>
       {title && (
         <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
           <span className="font-mono text-xs text-faint">{title}</span>

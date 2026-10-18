@@ -73,12 +73,6 @@ export function CollapseViz() {
       className="absolute left-1/2 top-1/2 h-[520px] w-[600px] select-none"
       style={{ transform: `translate(-50%, -50%) scale(${k})` }}
     >
-      {/* ambient dot field */}
-      <div
-        aria-hidden
-        className="absolute inset-[-8%] opacity-60 [background-image:radial-gradient(var(--line-strong)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_72%)]"
-      />
-
       {/* the counter: plain memory's count, then Echo's */}
       <div className="absolute left-0 top-0 z-20" aria-live="polite">
         <AnimatePresence mode="wait">
@@ -89,11 +83,11 @@ export function CollapseViz() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35 }}
           >
-            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
+            <div className="eyebrow">
               {collapsed ? "Echo counts origins" : "Plain memory counts mentions"}
             </div>
             <div className="mt-1 flex items-baseline gap-3">
-              <span className={`font-display text-6xl font-semibold tabular-nums ${collapsed ? "text-accent" : "text-text"}`}>
+              <span className={`display text-7xl leading-none tabular-nums ${collapsed ? "text-accent" : "text-text"}`}>
                 {collapsed ? 1 : shown}
               </span>
               <span className="font-mono text-sm text-muted">
@@ -168,7 +162,7 @@ export function CollapseViz() {
             style={{ x: "-50%", y: "-50%" }}
           >
             <div
-              className={`rounded-xl border bg-surface/95 px-3 py-2.5 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.6)] backdrop-blur transition-colors duration-500 ${
+              className={`rounded-lg border bg-surface px-3 py-2.5 shadow-card transition-colors duration-500 ${
                 traced ? "border-accent/40" : "border-line-strong"
               }`}
             >
@@ -196,7 +190,7 @@ export function CollapseViz() {
           animate={{ opacity: collapsed ? 0.32 : traced ? 0.14 : 0 }}
           transition={{ duration: 0.8 }}
         />
-        <div className="rounded-xl border border-accent/60 bg-surface px-3.5 py-3">
+        <div className="rounded-lg border border-accent/70 bg-surface px-3.5 py-3 shadow-card">
           <div className="flex items-center justify-between gap-2 font-mono text-[10.5px]">
             <span className="flex items-center gap-1.5 text-accent">
               <span className="relative flex h-2 w-2">

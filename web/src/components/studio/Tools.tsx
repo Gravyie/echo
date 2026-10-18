@@ -34,7 +34,7 @@ export function IngestPanel({ ws, onDone }: { ws: string; onDone: (r: IngestResu
   return (
     <div className="scrollbar-thin h-full space-y-4 overflow-y-auto p-4">
       <div>
-        <h2 className="font-display text-lg font-semibold tracking-tight">Add a source</h2>
+        <h2 className="display text-[24px] leading-tight">Add a source</h2>
         <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
           Echo extracts the claims, matches them to beliefs already in memory, and infers lineage against every stored source.
         </p>
@@ -71,7 +71,7 @@ export function IngestPanel({ ws, onDone }: { ws: string; onDone: (r: IngestResu
       <button
         disabled={busy || (mode === "url" ? !url : !text)}
         onClick={go}
-        className="w-full rounded-xl bg-accent py-2.5 text-[13px] font-medium text-accent-ink transition-transform active:scale-[0.98] disabled:opacity-40"
+        className="w-full rounded-md bg-text py-2.5 text-[13px] font-medium text-bg transition-transform active:scale-[0.98] disabled:opacity-40"
       >
         {busy ? "Reading and linking…" : "Ingest into memory"}
       </button>
@@ -144,7 +144,7 @@ export function CypherConsole({ ws }: { ws: string }) {
   const cols = rows?.length ? Object.keys(rows[0]) : [];
   return (
     <div className="flex h-full min-h-0 flex-col p-4">
-      <h2 className="font-display text-lg font-semibold tracking-tight">Query the memory</h2>
+      <h2 className="display text-[24px] leading-tight">Query the memory</h2>
       <p className="mt-1 text-[12.5px] text-muted">Read-only Cypher against this workspace's FalkorDB graph. Writes are rejected.</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {SAMPLES.map((s) => (
@@ -162,7 +162,7 @@ export function CypherConsole({ ws }: { ws: string }) {
         rows={6}
         className="mt-3 w-full rounded-xl border border-line-strong bg-surface p-3 font-mono text-[12px] leading-relaxed text-text focus:border-accent/60 focus:outline-none"
       />
-      <button onClick={run} disabled={busy} className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-accent py-2 text-[13px] font-medium text-accent-ink active:scale-[0.98] disabled:opacity-50">
+      <button onClick={run} disabled={busy} className="mt-2 flex items-center justify-center gap-1.5 rounded-md bg-text py-2 text-[13px] font-medium text-bg active:scale-[0.98] disabled:opacity-50">
         <Play size={13} weight="fill" /> Run
       </button>
       {err && <p className="mt-3 font-mono text-[11.5px] text-bad">{err}</p>}

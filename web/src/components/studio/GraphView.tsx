@@ -50,8 +50,9 @@ function readPalette() {
     owner: v("--owner"),
     agent: v("--agent"),
     gone: v("--gone"),
-    mono: v("--font-jetbrains") || "monospace",
-    sans: v("--font-plex") || "sans-serif",
+    mono: v("--font-geist-mono") || "monospace",
+    dark: document.documentElement.dataset.theme === "dark",
+    sans: v("--font-geist") || "sans-serif",
     status: Object.fromEntries(Object.entries(STATUS_VAR).map(([k, n]) => [k, v(n)])) as Record<Status, string>,
   };
 }
@@ -204,7 +205,7 @@ export function GraphView({
         const r = kind === "stub" || kind === "ident" ? 4 : 5.5;
         if (node.isRoot && !node.retracted) {
           const g = ctx.createRadialGradient(x, y, r, x, y, r * 4.2);
-          g.addColorStop(0, alpha(pal.accent, 0.45));
+          g.addColorStop(0, alpha(pal.accent, pal.dark ? 0.45 : 0.22));
           g.addColorStop(1, alpha(pal.accent, 0));
           ctx.fillStyle = g;
           ctx.beginPath();
@@ -340,7 +341,7 @@ export function GraphView({
   useEffect(() => {
     const f = fg.current;
     if (!f || !highlight || highlight.nodes.size === 0) return;
-    const t = window.setTimeout(() => f.zoomToFit(700, 90, (n: N) => highlight.nodes.has(n.id)), 80);
+    const t = window.setTimeout(() => f.zoomToFit(700, 130, (n: N) => highlight.nodes.has(n.id)), 80);
     return () => window.clearTimeout(t);
   }, [highlight, size.w, size.h]);
 
@@ -384,7 +385,10 @@ export function GraphView({
           onEngineStop={() => {
             if (!fitted.current && !highlight) {
               fitted.current = true;
-              fg.current?.zoomToFit(600, 70);
+              fg.current?.zoomToFit(600, 110);
+            } else if (highlight && highlight.nodes.size > 0) {
+              // new nodes (the agent's notes) reheat the layout: re-frame what is in focus once it settles
+              fg.current?.zoomToFit(500, 130, (n: N) => highlight.nodes.has(n.id));
             }
           }}
           enableNodeDrag

@@ -61,17 +61,17 @@ export function BeliefInspector({
           <StatusPill status={v.status} />
           {report.subject && <span className="font-mono text-[11px] text-faint">{report.subject}</span>}
         </div>
-        <h2 className="mt-3 font-display text-[19px] font-medium leading-snug tracking-tight">{report.statement}</h2>
+        <h2 className="display mt-3 text-[23px] leading-[1.15]">{report.statement}</h2>
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-line bg-surface p-4">
         <div>
-          <div className="font-display text-4xl font-semibold tabular-nums text-muted">{v.sources}</div>
+          <div className="display text-5xl leading-none tabular-nums text-muted">{v.sources}</div>
           <div className="text-[11.5px] text-faint">{v.sources === 1 ? "source says it" : "sources say it"}</div>
         </div>
         <ArrowRight size={18} className="text-faint" />
         <div>
-          <div className="font-display text-4xl font-semibold tabular-nums" style={{ color: v.origins > 1 ? "var(--ok)" : "var(--accent)" }}>
+          <div className="display text-5xl leading-none tabular-nums" style={{ color: v.origins > 1 ? "var(--ok)" : "var(--accent)" }}>
             {v.origins}
           </div>
           <div className="text-[11.5px] text-faint">independent {v.origins === 1 ? "origin" : "origins"}</div>
@@ -220,7 +220,7 @@ export function SourceInspector({
           {source.published_at && <span>{source.published_at}</span>}
           {source.retracted && <span className="text-bad">retracted</span>}
         </div>
-        <h2 className={`mt-3 font-display text-[19px] font-medium leading-snug tracking-tight ${source.retracted ? "text-gone line-through" : ""}`}>
+        <h2 className={`display mt-3 text-[23px] leading-[1.15] ${source.retracted ? "text-gone line-through" : ""}`}>
           {source.title}
         </h2>
         {source.author && <div className="mt-1 text-[12.5px] text-muted">{source.author}</div>}
