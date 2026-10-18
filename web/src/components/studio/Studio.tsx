@@ -396,7 +396,7 @@ export default function Studio() {
     if (top) {
       setSel({ kind: "belief", id: top.id });
       setView("lineage");
-      flash(`“${top.statement}” — ${top.sources} sources, ${top.origins} independent ${top.origins === 1 ? "origin" : "origins"}. The news site copied the first lab.`);
+      flash(`“${top.statement}” has ${top.sources} sources but ${top.origins} independent ${top.origins === 1 ? "origin" : "origins"}: the news site copied the first lab.`);
     }
   };
   const [exStep, setExStep] = useState<number | null>(null);
