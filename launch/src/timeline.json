@@ -1,0 +1,70 @@
+{
+ "engine": "recorded",
+ "lines": [
+  {
+   "text": "Today, we're launching Echo.",
+   "file": "vo/00.wav",
+   "seconds": 1.776
+  },
+  {
+   "text": "Memory for AI agents that knows where every belief came from.",
+   "file": "vo/01.wav",
+   "seconds": 3.418
+  },
+  {
+   "text": "Agents trust a claim more, each time they read it.",
+   "file": "vo/02.wav",
+   "seconds": 2.76
+  },
+  {
+   "text": "But five pages saying the same thing can be one planted post, copied five times.",
+   "file": "vo/03.wav",
+   "seconds": 5.066
+  },
+  {
+   "text": "Echo traces every claim back to its origin, and counts independent origins, not repeats.",
+   "file": "vo/04.wav",
+   "seconds": 5.686
+  },
+  {
+   "text": "Ask your agent anything. It recalls what it knows, checks each belief's independence, and shows its work.",
+   "file": "vo/05.wav",
+   "seconds": 6.208
+  },
+  {
+   "text": "Plain memory recommends the planted vendor. Echo sees five sources, one origin, and doesn't.",
+   "file": "vo/06.wav",
+   "seconds": 5.733
+  },
+  {
+   "text": "Open the lineage, and see the proof. Every copy, every link, every shared figure.",
+   "file": "vo/07.wav",
+   "seconds": 5.311
+  },
+  {
+   "text": "Retract the planted post, and everything built on it is rescored in milliseconds.",
+   "file": "vo/08.wav",
+   "seconds": 4.489
+  },
+  {
+   "text": "Under the hood, it's FalkorDB. Every verdict is a graph traversal. PageRank finds the origins your beliefs rest on. And every memory is its own graph.",
+   "file": "vo/09.wav",
+   "seconds": 9.226
+  },
+  {
+   "text": "Bring your own model. Set your own trust policy. And connect Echo to Claude Code, Cursor, or any agent over MCP.",
+   "file": "vo/10.wav",
+   "seconds": 7.528
+  },
+  {
+   "text": "On our benchmark, plain memory stated seventeen of eighteen poisoned claims as fact. Echo stated one.",
+   "file": "vo/11.wav",
+   "seconds": 6.287
+  },
+  {
+   "text": "Echo. Count origins, not mentions.",
+   "file": "vo/12.wav",
+   "seconds": 2.69
+  }
+ ]
+}

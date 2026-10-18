@@ -101,7 +101,7 @@ Scenarios: **The safest gateway** (a hospital picks an LLM gateway; one planted,
 
 ## Write-ups
 
-[Blog post](docs/blog.md) · [Demo script](docs/demo-script.md) · [Submission text](docs/submission.md)
+[Blog post](docs/blog.md) · [Demo script](docs/demo-script.md) · [Submission text](docs/submission.md) · [Launch kit and video](docs/launch.md)
 
 ## Echo as a product
 

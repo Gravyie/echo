@@ -1,0 +1,21 @@
+{
+  "name": "echo-launch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Launch out/echo-launch.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.300",
+    "@remotion/google-fonts": "4.0.300",
+    "@remotion/media-utils": "4.0.300",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.300"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^5.8.3"
+  }
+}
