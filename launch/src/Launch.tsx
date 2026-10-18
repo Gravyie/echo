@@ -17,14 +17,14 @@ import {
 } from "remotion";
 import timeline from "./timeline.json";
 
-const { fontFamily: SERIF } = loadNews("normal", { weights: ["300", "400"] });
+export const { fontFamily: SERIF } = loadNews("normal", { weights: ["300", "400"] });
 loadNews("italic", { weights: ["400"] });
-const { fontFamily: SANS } = loadGeist();
-const { fontFamily: MONO } = loadMono();
+export const { fontFamily: SANS } = loadGeist();
+export const { fontFamily: MONO } = loadMono();
 
 const FPS = 30;
-const C = { paper: "#f4f3ef", ink: "#141413", night: "#0e0e0d", ember: "#e0501a", emberSoft: "#ffb08a", ok: "#5fc48f", bad: "#ee6b5b", muted: "#a6a59f", faint: "#73726d" };
-const EASE = Easing.bezier(0.22, 1, 0.36, 1);
+export const C = { paper: "#f4f3ef", ink: "#141413", night: "#0e0e0d", ember: "#e0501a", emberSoft: "#ffb08a", ok: "#5fc48f", bad: "#ee6b5b", muted: "#a6a59f", faint: "#73726d" };
+export const EASE = Easing.bezier(0.22, 1, 0.36, 1);
 
 /* ------------------------------------------------------------------ timing from the narration */
 
@@ -47,17 +47,17 @@ const X = 12; // crossfade frames
 
 /* ------------------------------------------------------------------ building blocks */
 
-const ease = (f: number, a: number, b: number, from = 0, to = 1) =>
+export const ease = (f: number, a: number, b: number, from = 0, to = 1) =>
   interpolate(f, [a, b], [from, to], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: EASE });
 
-function Fade({ d, children }: { d: number; children: React.ReactNode }) {
+export function Fade({ d, children }: { d: number; children: React.ReactNode }) {
   const f = useCurrentFrame();
   const o = Math.min(ease(f, 0, X), ease(f, d - 2, d + X - 2, 1, 0));
   return <AbsoluteFill style={{ opacity: o }}>{children}</AbsoluteFill>;
 }
 
 /** Slow camera move across a painting (our b-roll). */
-function Painting({ src, d, from = 1.08, to = 1.18, x = [0, -3], y = [0, -2], dim = 0.25, blur = 0 }: { src: string; d: number; from?: number; to?: number; x?: number[]; y?: number[]; dim?: number; blur?: number }) {
+export function Painting({ src, d, from = 1.08, to = 1.18, x = [0, -3], y = [0, -2], dim = 0.25, blur = 0 }: { src: string; d: number; from?: number; to?: number; x?: number[]; y?: number[]; dim?: number; blur?: number }) {
   const f = useCurrentFrame();
   const t = interpolate(f, [0, d + X], [0, 1], { extrapolateRight: "clamp" });
   return (
@@ -78,7 +78,7 @@ function Painting({ src, d, from = 1.08, to = 1.18, x = [0, -3], y = [0, -2], di
 }
 
 /** The echo-trail mark: an origin, its repeats rippling out. */
-function Mark({ size = 120, t = 1 }: { size?: number; t?: number }) {
+export function Mark({ size = 120, t = 1 }: { size?: number; t?: number }) {
   const rings = [0.75, 0.45, 0.22];
   return (
     <svg width={size} height={size} viewBox="0 0 32 32">
@@ -92,7 +92,7 @@ function Mark({ size = 120, t = 1 }: { size?: number; t?: number }) {
   );
 }
 
-function Kinetic({ text, at = 0, size = 150, italic = false, color = C.paper, y = 0 }: { text: string; at?: number; size?: number; italic?: boolean; color?: string; y?: number }) {
+export function Kinetic({ text, at = 0, size = 150, italic = false, color = C.paper, y = 0 }: { text: string; at?: number; size?: number; italic?: boolean; color?: string; y?: number }) {
   const f = useCurrentFrame();
   const words = text.split(" ");
   return (
@@ -110,7 +110,7 @@ function Kinetic({ text, at = 0, size = 150, italic = false, color = C.paper, y 
 }
 
 /** Product footage in a floating browser window with a gentle 3D settle. */
-function Window({ src, d, startFrom = 0, rate = 1, zoom = 1, origin = "50% 50%", zoomTo, label = "meetecho.vercel.app/studio", width = 1320 }: { src: string; d: number; startFrom?: number; rate?: number; zoom?: number; origin?: string; zoomTo?: number; label?: string; width?: number }) {
+export function Window({ src, d, startFrom = 0, rate = 1, zoom = 1, origin = "50% 50%", zoomTo, label = "meetecho.vercel.app/studio", width = 1320 }: { src: string; d: number; startFrom?: number; rate?: number; zoom?: number; origin?: string; zoomTo?: number; label?: string; width?: number }) {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const rise = spring({ frame: f, fps, config: { damping: 200 }, durationInFrames: 34 });
@@ -144,7 +144,7 @@ function Window({ src, d, startFrom = 0, rate = 1, zoom = 1, origin = "50% 50%",
   );
 }
 
-function Tag({ children, at = 0, tone = "ember" }: { children: React.ReactNode; at?: number; tone?: "ember" | "plain" | "ok" | "bad" }) {
+export function Tag({ children, at = 0, tone = "ember" }: { children: React.ReactNode; at?: number; tone?: "ember" | "plain" | "ok" | "bad" }) {
   const f = useCurrentFrame();
   const col = tone === "ember" ? C.ember : tone === "ok" ? C.ok : tone === "bad" ? C.bad : C.paper;
   return (
@@ -172,7 +172,7 @@ function Tag({ children, at = 0, tone = "ember" }: { children: React.ReactNode; 
   );
 }
 
-function Eyebrow({ children, at = 0, color = C.muted }: { children: React.ReactNode; at?: number; color?: string }) {
+export function Eyebrow({ children, at = 0, color = C.muted }: { children: React.ReactNode; at?: number; color?: string }) {
   const f = useCurrentFrame();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 14, fontFamily: MONO, fontSize: 20, letterSpacing: "0.18em", textTransform: "uppercase", color, opacity: ease(f, at, at + 14) }}>

@@ -1,0 +1,130 @@
+{
+ "engine": "kokoro af_heart",
+ "lines": [
+  {
+   "text": "We are Ubermenschen, and today we are launching Echo.",
+   "file": "vo2/00.wav",
+   "seconds": 3.307
+  },
+  {
+   "text": "Think about an agent doing research, comparing products, or helping you make a decision.",
+   "file": "vo2/01.wav",
+   "seconds": 4.971
+  },
+  {
+   "text": "It reads, remembers, and builds on what it finds.",
+   "file": "vo2/02.wav",
+   "seconds": 2.795
+  },
+  {
+   "text": "But what happens when five sources repeat the same claim?",
+   "file": "vo2/03.wav",
+   "seconds": 3.243
+  },
+  {
+   "text": "The agent might remember five confirmations when there's really only one original source.",
+   "file": "vo2/04.wav",
+   "seconds": 5.291
+  },
+  {
+   "text": "That's the problem we wanted to solve.",
+   "file": "vo2/05.wav",
+   "seconds": 1.899
+  },
+  {
+   "text": "Echo traces those connections, separates repeated information from independent support, and helps agents understand what their beliefs are actually based on.",
+   "file": "vo2/06.wav",
+   "seconds": 9.536
+  },
+  {
+   "text": "Here's how it works.",
+   "file": "vo2/07.wav",
+   "seconds": 1.195
+  },
+  {
+   "text": "Ask the agent a question.",
+   "file": "vo2/08.wav",
+   "seconds": 1.557
+  },
+  {
+   "text": "Compare its answer with a plain memory.",
+   "file": "vo2/09.wav",
+   "seconds": 2.069
+  },
+  {
+   "text": "Open a belief, trace its sources back to their origins, and inspect the evidence behind those connections.",
+   "file": "vo2/10.wav",
+   "seconds": 6.4
+  },
+  {
+   "text": "And when a source gets retracted, Echo checks the beliefs that depended on it and updates their verdicts.",
+   "file": "vo2/11.wav",
+   "seconds": 5.739
+  },
+  {
+   "text": "We built this on FalkorDB because Echo needs to do more than store sources.",
+   "file": "vo2/12.wav",
+   "seconds": 4.843
+  },
+  {
+   "text": "It needs to understand how they connect, follow those relationships, and trace evidence across the graph.",
+   "file": "vo2/13.wav",
+   "seconds": 6.251
+  },
+  {
+   "text": "And you can make it work with your own setup.",
+   "file": "vo2/14.wav",
+   "seconds": 2.027
+  },
+  {
+   "text": "Configure your model, connect Echo to your agent workflow, and access its tools through the API or MCP.",
+   "file": "vo2/15.wav",
+   "seconds": 7.275
+  },
+  {
+   "text": "If you're a researcher, trace claims back to their origins.",
+   "file": "vo2/16.wav",
+   "seconds": 3.264
+  },
+  {
+   "text": "If you're building agents, inspect their memory and check the evidence behind their decisions.",
+   "file": "vo2/17.wav",
+   "seconds": 5.163
+  },
+  {
+   "text": "And if you're using agents to make decisions, see whether their confidence comes from independent evidence, or the same claim repeated over and over.",
+   "file": "vo2/18.wav",
+   "seconds": 8.768
+  },
+  {
+   "text": "Echo doesn't promise that every claim is true.",
+   "file": "vo2/19.wav",
+   "seconds": 2.517
+  },
+  {
+   "text": "It helps you understand where the evidence comes from, and whether those sources are actually independent.",
+   "file": "vo2/20.wav",
+   "seconds": 5.525
+  },
+  {
+   "text": "Because better agents need more than better answers.",
+   "file": "vo2/21.wav",
+   "seconds": 2.901
+  },
+  {
+   "text": "They need memory they can check.",
+   "file": "vo2/22.wav",
+   "seconds": 1.771
+  },
+  {
+   "text": "We're excited to see what you build with Echo.",
+   "file": "vo2/23.wav",
+   "seconds": 2.411
+  },
+  {
+   "text": "We're Ubermenschen, and this is Echo.",
+   "file": "vo2/24.wav",
+   "seconds": 2.261
+  }
+ ]
+}
